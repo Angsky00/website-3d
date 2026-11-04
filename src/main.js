@@ -23,8 +23,9 @@ document.querySelector('#app').innerHTML = `
   <section id="hero" aria-label="Inicio">
     <canvas id="scene" role="img" aria-label="Animación: una impresora 3D imprime capa por capa el arco maya del logotipo de ${c.marca.nombre}"></canvas>
     <div class="hero-copy">
-      <h1>${c.hero.titulo}</h1><p>${c.hero.subtitulo}</p>
-      <a class="btn" href="#contacto">${c.hero.boton}</a>
+      <span class="eyebrow">${c.contacto.ubicacion}</span>
+      <h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p>
+      <a class="btn ghost" href="#contacto">${c.hero.boton} <span aria-hidden="true">→</span></a>
     </div>
     <p class="hero-final">${c.hero.final}</p>
     <p class="progress" aria-hidden="true">capa <span id="capa">0</span> / 120 · 0.20 mm</p>
@@ -88,5 +89,10 @@ if (reduced) {
     },
   });
   window.__hero = st;
+  // entrada del hero
+  gsap.from('.hero-copy > *', { opacity: 0, y: 30, duration: 1, ease: 'power3.out', stagger: 0.12, delay: 0.2 });
+  gsap.utils.toArray('.card').forEach((el, i) => gsap.set(el, { opacity: 0, y: 40 }));
+  ScrollTrigger.batch('.card', { start: 'top 90%', onEnter: b => gsap.to(b, { opacity: 1, y: 0, stagger: 0.1, duration: .8, ease: 'power3.out' }) });
+  gsap.utils.toArray('.s h2').forEach(el => gsap.from(el, { clipPath: 'inset(0 100% 0 0)', duration: 1.1, ease: 'power3.inOut', scrollTrigger: { trigger: el, start: 'top 85%' } }));
   gsap.utils.toArray('.reveal').forEach(el => gsap.to(el, { opacity: 1, y: 0, duration: .7, ease: 'power2.out', scrollTrigger: { trigger: el, start: 'top 88%' } }));
 }
