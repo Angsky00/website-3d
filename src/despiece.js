@@ -1,100 +1,122 @@
-// Despiece del extrusor (procedural, sin descargas). setProgress(p): 0 armado → piezas se separan una a una → p≥0.82 se rearma.
+// Despiece del extrusor (procedural, sin descargas). Inspirado en despieces editoriales: eje diagonal (escritorio) / vertical (celular),
+// vista 3/4, materiales PBR y luz de estudio. setProgress(p): 0 armado → piezas se separan una a una → p≥0.82 se rearma.
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-export function createDespiece(canvas, labelsEl, { reduced }) {
+export function createDespiece(canvas, labelsEl, { reduced, piezas, ui }) {
   const C = { terracota: css('--terracota'), jade: css('--jade'), arena: css('--arena'), carbon: css('--carbon'), crema: css('--crema') };
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
-  scene.add(new THREE.HemisphereLight(0xfff5e6, 0x3a2e28, 2.0));
-  const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 6, 8); scene.add(key);
-  const rim = new THREE.DirectionalLight(new THREE.Color(C.jade), 1.0); rim.position.set(-6, 2, -4); scene.add(rim);
-  const root = new THREE.Group(); scene.add(root);
-  const mat = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.35, flatShading: false });
-  const mesh = (geo, m, x = 0, y = 0, z = 0, g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(26, 1, 0.1, 200);
+  const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.55;
+  // luz de estudio suave: principal cálida con sombra, relleno y contraluz terracota/jade
+  const key = new THREE.DirectionalLight(0xfff4e6, 2.6); key.position.set(5, 8, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.radius = 6; key.shadow.bias = -0.0008;
+  Object.assign(key.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 30 }); scene.add(key);
+  scene.add(new THREE.HemisphereLight(0xf4ecdd, 0x1f1b18, 0.6));
+  const rimT = new THREE.DirectionalLight(0xffffff, 0.8); rimT.position.set(6, -2, -6); scene.add(rimT);
+  const rimJ = new THREE.DirectionalLight(0xffffff, 0.6); rimJ.position.set(-7, 3, -4); scene.add(rimJ);
+  // eje: tiltZ (diagonal/vertical) > tiltX + spinY (vista 3/4) > piezas sobre el eje local Y
+  const tiltZ = new THREE.Group(), tilt = new THREE.Group(); scene.add(tiltZ); tiltZ.add(tilt); tilt.rotation.set(0.32, 0.72, 0);
+  const plastic = c => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.32, metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.18 });
+  const metal = (c, r = 0.28) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0.95 });
+  const M = { carbon: plastic('#3b3836'), arena: plastic('#8f8b86'), crema: plastic('#b9b5b0'), alu: metal('#a8a49f', 0.32), hot: metal(C.terracota, 0.4), hotP: plastic(C.terracota), aluD: metal('#8d8478', 0.35), steel: metal('#c9c1b4', 0.22), brass: metal('#9a9792', 0.2),
+    ptfe: new THREE.MeshPhysicalMaterial({ color: '#d8d6d3', roughness: 0.25, transmission: 0, transparent: true, opacity: 0.55, clearcoat: 1, depthWrite: false }),
+    fil: new THREE.MeshStandardMaterial({ color: C.jade, roughness: 0.35, emissive: new THREE.Color(C.jade), emissiveIntensity: 0.25 }),
+    cable: new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.6 }) };
+  const mk = (geo, m, g, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  const rb = (w, h, d, r = 0.04) => new RoundedBoxGeometry(w, h, d, 3, r);
+  const cyl = (r, h, s = 32) => new THREE.CylinderGeometry(r, r, h, s);
+  const gearGeo = (r, n, t) => { const s = new THREE.Shape(); for (let i = 0; i <= n * 4; i++) { const a = i / (n * 4) * Math.PI * 2, k = i % 4, rr = k === 1 || k === 2 ? r : r * 0.84; s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    const h = new THREE.Path(); h.absarc(0, 0, r * 0.22, 0, Math.PI * 2, true); s.holes.push(h); return new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: true, bevelSize: 0.012, bevelThickness: 0.012, bevelSegments: 2, curveSegments: 6 }).translate(0, 0, -t / 2); };
   const parts = [];
-  // base: [clave, etiqueta, color base, constructor, desplazamiento local al despiezar]
-  const add = (label, base, build, off) => { const g = new THREE.Group(); const m = mat(base); m.userData.base = new THREE.Color(base); build(g, m); root.add(g); parts.push({ label, g, m, off: new THREE.Vector3(...off), rot: (parts.length % 2 ? 1 : -1) * 0.35 }); };
-  const A = C.arena, K = C.carbon, gearShape = (r, n) => { const s = new THREE.Shape(); for (let i = 0; i <= n * 2; i++) { const a = i / (n * 2) * Math.PI * 2, rr = i % 2 ? r : r * 0.82; s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } const h = new THREE.Path(); h.absarc(0, 0, r * 0.25, 0, Math.PI * 2, true); s.holes.push(h); return s; };
-  add('ventilador', K, (g, m) => { mesh(new THREE.BoxGeometry(0.9, 0.9, 0.16), m, 0, 0, 0, g); const hub = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 16), mat(A), 0, 0, 0.02, g); hub.rotation.x = Math.PI / 2;
-    for (let i = 0; i < 7; i++) { const b = mesh(new THREE.BoxGeometry(0.34, 0.1, 0.03), mat(A), 0, 0, 0.06, g); b.position.set(Math.cos(i * 0.9) * 0.24, Math.sin(i * 0.9) * 0.24, 0.06); b.rotation.set(0.4, 0, i * 0.9); } g.position.set(0, 0.2, 0.62); }, [0, 0, 1.5]);
-  add('ducto', A, (g, m) => { mesh(new THREE.BoxGeometry(1.0, 0.35, 0.5), m, 0, 0, 0, g); mesh(new THREE.BoxGeometry(0.7, 0.12, 0.3), m, 0, -0.22, 0.12, g); g.position.set(0, -0.62, 0.55); }, [0, -0.5, 1.3]);
-  add('tubo PTFE', '#efe6d6', (g, m) => { m.transparent = true; m.opacity = 0.85; mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.5, 16), m, 0, 0, 0, g);
-    mesh(new THREE.CylinderGeometry(0.022, 0.022, 2.6, 8), new THREE.MeshStandardMaterial({ color: C.jade, emissive: new THREE.Color(C.jade), emissiveIntensity: 0.25 }), 0, 0.55, 0, g); g.position.set(0, 2.15, 0); }, [0, 2.4, 0]);
-  add('Motor: mueve los engranes que empujan el filamento.', K, (g, m) => { mesh(new THREE.BoxGeometry(0.85, 0.85, 0.7), m, 0, 0, 0, g); mesh(new THREE.BoxGeometry(0.87, 0.06, 0.72), mat(A), 0, 0.2, 0, g); mesh(new THREE.BoxGeometry(0.87, 0.06, 0.72), mat(A), 0, -0.2, 0, g); g.position.set(-0.75, 1.25, -0.1); }, [-1.5, 0.7, 0]);
-  add('engranes de tracción', A, (g, m) => { const geo = new THREE.ExtrudeGeometry(gearShape(0.26, 14), { depth: 0.14, bevelEnabled: false }); mesh(geo, m, -0.29, 0, 0, g); mesh(geo, m, 0.29, 0, 0, g); g.position.set(0, 1.25, 0); }, [0, 1.5, 0.5]);
-  add('cartucho calefactor', K, (g, m) => { const c = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.9, 16), m, 0, 0, 0, g); c.rotation.z = Math.PI / 2; g.position.set(0.05, -0.62, 0.1); }, [1.5, -0.4, 0]);
-  add('termistor', A, (g, m) => { const c = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 12), m, 0, 0, 0, g); c.rotation.z = Math.PI / 2; mesh(new THREE.SphereGeometry(0.06, 10, 8), mat(K), -0.3, 0, 0, g); g.position.set(0.05, -0.8, -0.12); }, [-1.4, -0.9, 0]);
-  add('bloque calentador', A, (g, m) => { mesh(new THREE.BoxGeometry(0.75, 0.5, 0.5), m, 0, 0, 0, g); g.position.set(0, -0.7, 0); }, [0, -1.6, 0]);
-  add('boquilla', K, (g, m) => { mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.14, 6), m, 0, 0.05, 0, g); mesh(new THREE.ConeGeometry(0.13, 0.25, 16), m, 0, -0.14, 0, g).rotation.x = Math.PI; g.position.set(0, -1.08, 0); }, [0, -2.9, 0]);
-  add('disipador', A, (g, m) => { for (let i = 0; i < 8; i++) mesh(new THREE.BoxGeometry(0.8, 0.05, 0.8), m, 0, -0.18 + i * 0.1, 0, g); mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 16), mat(K), 0, 0.12, 0, g); mesh(new THREE.BoxGeometry(0.85, 0.12, 0.85), mat(K), 0, 0.62, 0, g); g.position.set(0, 0.2, 0); }, [0, 0, 0]);
-  parts.forEach(p => { p.home = p.g.position.clone(); });
-  const N = parts.length, hot = new THREE.Color(C.terracota);
-  labelsEl.innerHTML = parts.map((p, i) => `<span class="dl"><b>${String(i + 1).padStart(2, '0')}</b> ${p.label}</span>`).join('');
+  // [constructor, posición armada, posición abierta]; el orden = orden de separación (de arriba a abajo del eje)
+  const add = (build, home, open) => { const g = new THREE.Group(); build(g); tilt.add(g); const mats = new Set(); g.traverse(o => { if (o.material) mats.add(o.material); });
+    parts.push({ g, home: new THREE.Vector3(...home), open: new THREE.Vector3(...open), rot: 0.12, meshes: [] }); g.traverse(o => { if (o.isMesh) parts.at(-1).meshes.push([o, o.material]); }); };
+  add(g => { mk(cyl(0.075, 1.6), M.ptfe, g); mk(cyl(0.028, 3.4, 12), M.fil, g, 0, 0.7); mk(cyl(0.12, 0.14, 6), M.brass, g, 0, -0.8); }, [0, 2.35, 0], [0, 6.6, 0]); // tubo PTFE + filamento
+  add(g => { mk(rb(0.95, 0.95, 0.8, 0.06), M.carbon, g); for (const y of [-0.3, 0.3]) mk(rb(0.97, 0.07, 0.82, 0.02), M.aluD, g, 0, y); mk(cyl(0.05, 0.4, 16), M.steel, g, 0, 0, 0.55, Math.PI / 2);
+    mk(cyl(0.03, 0.5, 8), M.cable, g, -0.3, -0.6, 0); }, [-0.95, 1.4, -0.1], [0, 5.1, 0]); // motor
+  add(g => { const geo = gearGeo(0.27, 12, 0.16); mk(geo, M.steel, g, -0.29, 0, 0); mk(geo, M.steel, g, 0.29, 0, 0); mk(cyl(0.05, 0.3, 12), M.brass, g, -0.29, 0, 0, Math.PI / 2); mk(cyl(0.05, 0.3, 12), M.brass, g, 0.29, 0, 0, Math.PI / 2); }, [0, 1.4, 0], [0, 3.8, 0]); // engranes
+  add(g => { for (let i = 0; i < 10; i++) mk(cyl(0.42 - (i % 2) * 0.02, 0.045, 40), M.alu, g, 0, -0.25 + i * 0.09); mk(cyl(0.13, 1.05, 24), M.aluD, g, 0, 0.1); mk(rb(0.9, 0.16, 0.9, 0.03), M.carbon, g, 0, 0.72); }, [0, 0.35, 0], [0, 2.5, 0]); // disipador
+  add(g => { const f = new THREE.Shape(); f.moveTo(-0.45, -0.45); f.lineTo(0.45, -0.45); f.lineTo(0.45, 0.45); f.lineTo(-0.45, 0.45); const h = new THREE.Path(); h.absarc(0, 0, 0.38, 0, Math.PI * 2, true); f.holes.push(h);
+    mk(new THREE.ExtrudeGeometry(f, { depth: 0.16, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 }).translate(0, 0, -0.08), M.carbon, g);
+    mk(cyl(0.13, 0.14, 24), M.carbon, g, 0, 0, 0, Math.PI / 2); for (let i = 0; i < 7; i++) { const b = mk(rb(0.27, 0.12, 0.02, 0.01), M.arena, g, Math.cos(i * 0.898) * 0.22, Math.sin(i * 0.898) * 0.22, 0, 0.5, 0, i * 0.898); }
+    for (const [x, y] of [[-0.38, -0.38], [0.38, -0.38], [-0.38, 0.38], [0.38, 0.38]]) mk(cyl(0.03, 0.2, 10), M.steel, g, x, y, 0, Math.PI / 2); }, [0, 0.35, 0.58], [0, 1.15, 0]); // ventilador
+  add(g => { const s = new THREE.Shape(); s.moveTo(-0.5, 0.15); s.lineTo(0.5, 0.15); s.lineTo(0.3, -0.25); s.lineTo(-0.3, -0.25); mk(new THREE.ExtrudeGeometry(s, { depth: 0.5, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2 }).translate(0, 0, -0.25), M.arena, g);
+    mk(rb(0.5, 0.1, 0.22, 0.03), M.arena, g, 0, -0.3, 0.1); }, [0, -0.55, 0.55], [0, -0.05, 0]); // ducto
+  add(g => { mk(rb(0.78, 0.48, 0.52, 0.04), M.hot, g); mk(cyl(0.05, 0.08, 6), M.steel, g, 0.2, 0.26, 0.15); }, [0, -0.62, 0], [0, -1.25, 0]); // bloque calentador
+  add(g => { mk(cyl(0.085, 0.82, 24), M.steel, g, 0, 0, 0, 0, 0, Math.PI / 2); mk(cyl(0.02, 0.6, 8), M.cable, g, 0.65, 0.04, 0.03, 0, 0, Math.PI / 2); mk(cyl(0.02, 0.6, 8), M.cable, g, 0.65, -0.04, -0.03, 0, 0, Math.PI / 2); }, [0.05, -0.55, 0.1], [0, -2.3, 0]); // cartucho
+  add(g => { mk(cyl(0.04, 0.5, 16), M.steel, g, 0, 0, 0, 0, 0, Math.PI / 2); mk(new THREE.SphereGeometry(0.055, 16, 12), M.carbon, g, -0.26, 0, 0); mk(cyl(0.015, 0.5, 8), M.cable, g, 0.5, 0, 0, 0, 0, Math.PI / 2); }, [0.05, -0.75, -0.14], [0, -3.15, 0]); // termistor
+  add(g => { mk(cyl(0.05, 0.3, 16), M.hot, g, 0, 0.2); mk(cyl(0.16, 0.14, 6), M.hot, g, 0, 0); mk(new THREE.ConeGeometry(0.12, 0.22, 24), M.hot, g, 0, -0.18, 0, Math.PI); }, [0, -1.0, 0], [0, -4.1, 0]); // boquilla
+  const N = parts.length, glow = new Map(); // activa: realce sutil (emisivo crema) sobre su propio material
+  const hi = m => { if (!glow.has(m)) { const h = m.clone(); h.emissive = new THREE.Color(C.crema); h.emissiveIntensity = 0.22; glow.set(m, h); } return glow.get(m); };
+  labelsEl.innerHTML = parts.map((p, i) => `<span class="dl"><b>${String(i + 1).padStart(2, '0')}</b>${piezas[i][0]}</span>`).join('');
   const labels = [...labelsEl.children];
-  // líneas guía (estilo plano técnico) del rótulo a su pieza
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'dlines'); labelsEl.prepend(svg);
   const lines = parts.map(() => { const l = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); svg.append(l); return l; });
-  let hxs = [], W = 1, H = 1, mobile = false, last = -1;
+  const uNum = ui.querySelector('.dnum'), uName = ui.querySelector('.dname'), uDesc = ui.querySelector('.ddesc');
+  let W = 1, H = 1, mobile = false, last = -1, ready = false, cur = reduced ? 0.76 : 0, lastStep = null;
+  const v = new THREE.Vector3(), axS = new THREE.Vector2();
+  function place(s) { parts.forEach(q => { q.g.position.lerpVectors(q.home, q.open, s); }); }
   function layout() {
     const r = canvas.getBoundingClientRect(); W = r.width || 1; H = r.height || 1; mobile = W < 820;
-    renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 1.75)); renderer.setSize(W, H, false);
-    camera.aspect = W / H;
-    // escritorio: eje del extrusor horizontal; celular: vertical
-    root.rotation.set(0.25, mobile ? -0.35 : 0, 0); if (!mobile) root.rotateZ(-Math.PI / 2), root.rotateX(0.35);
-    // encuadre automático del estado abierto
-    parts.forEach(q => q.g.position.copy(q.home).add(q.off)); root.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(root), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
-    const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), padW = mobile ? 1.9 : 1.35, padH = mobile ? 1.3 : 1.45;
-    const d = Math.max(sz.y * padH / 2 / t, sz.x * padW / 2 / (t * camera.aspect)) + sz.z / 2;
-    camera.position.set(c.x, c.y + (mobile ? 0.25 : 0.2) * sz.y * 0.1, c.z + d); camera.lookAt(c.x, c.y, c.z); camera.updateProjectionMatrix(); ready = W > 1 && H > 1;
-    hxs = parts.map(q => q.g.getWorldPosition(new THREE.Vector3()).project(camera).x);
-    last = -1; draw(cur);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 1.5)); renderer.setSize(W, H, false); camera.aspect = W / H;
+    tiltZ.rotation.z = mobile ? 0 : -Math.PI / 4; // escritorio: eje de arriba-derecha a abajo-izquierda
+    place(1); scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(tilt), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+    const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    // área útil: escritorio deja libre la columna de texto izquierda; celular deja título arriba y ficha abajo
+    const fw = mobile ? 0.86 : 0.5, fh = mobile ? 0.6 : 0.92;
+    const d = Math.max(sz.y / fh / 2 / t, sz.x / fw / 2 / (t * camera.aspect)) + sz.z / 2;
+    const sx = 0, sy = mobile ? 0.02 * H : 0; // desplazamiento en pantalla del conjunto (px)
+    const wpp = 2 * d * t / H; // unidades por px a la distancia d
+    camera.position.set(c.x - sx * wpp, c.y + sy * wpp, c.z + d); camera.lookAt(camera.position.x, camera.position.y, c.z); camera.updateProjectionMatrix();
+    ready = true; last = -1; draw(cur);
   }
-  const sm = t => t * t * (3 - 2 * t), cl = (a, b, v) => Math.min(b, Math.max(a, v));
-  let cur = reduced ? 0.78 : 0;
-  const v = new THREE.Vector3();
-  let ready = false;
+  const sm = t => t * t * (3 - 2 * t), cl = (a, b, x) => Math.min(b, Math.max(a, x)), pad = n => String(n).padStart(3, '0');
   function draw(p) {
-    if (!ready) return; // antes del primer layout la cámara está en el origen → proyecciones NaN
-    // separación: 0.04–0.70 una por una; 0.70–0.82 abierto; 0.82–0.98 rearmado (todas juntas, en orden inverso)
-    const back = sm(cl(0, 1, (p - 0.82) / 0.16));
+    if (!ready) return;
+    // separación: 0.04–0.70 una por una; 0.70–0.82 abierto; 0.82–0.98 rearmado
+    const back = sm(cl(0, 1, (p - 0.82) / 0.16)), slot = 0.66 / N;
     let active = -1;
     parts.forEach((q, i) => {
-      const a = 0.04 + i * (0.66 / N), s = sm(cl(0, 1, (p - a) / (0.66 / N))) * (1 - back);
-      if (p >= a && p < a + 0.66 / N && !reduced) active = i;
-      q.g.position.copy(q.home).addScaledVector(q.off, s);
-      q.g.rotation.set(0, q.rot * s, q.rot * 0.5 * s);
-      q.s = s;
+      const a = 0.04 + i * slot, s = sm(cl(0, 1, (p - a) / slot)) * (1 - back);
+      if (!reduced && p >= a && p < a + slot) active = i;
+      q.g.position.lerpVectors(q.home, q.open, s); q.g.rotation.set(q.rot * 0.6 * s, q.rot * s, q.rot * 0.4 * s); q.s = s;
     });
-    if (p > 0.82 && p < 0.98 && !reduced) active = N - 1 - Math.min(N - 1, Math.floor((p - 0.82) / 0.16 * N));
-    parts.forEach((q, i) => q.m.color.copy(i === active ? hot : q.m.userData.base));
-    root.updateMatrixWorld(); renderer.render(scene, camera);
-    const cx = W / 2, L = [];
+    if (!reduced && p > 0.82 && p < 0.98) active = N - 1 - Math.min(N - 1, Math.floor((p - 0.82) / 0.16 * N));
+    parts.forEach((q, i) => q.meshes.forEach(([o, m]) => { o.material = i === active && m !== M.fil ? hi(m) : m; }));
+    scene.updateMatrixWorld(); renderer.render(scene, camera);
+    // ficha: contador NN / 10 + nombre y descripción de la pieza activa
+    const step = active >= 0 ? active : p >= 0.70 && p <= 0.82 || reduced ? 'open' : p > 0.82 ? 'done' : 'start';
+    if (step !== lastStep) { lastStep = step;
+      if (typeof step === 'number') { uNum.textContent = `${pad(step + 1)} / ${pad(N)}`; uName.textContent = piezas[step][0]; uDesc.textContent = piezas[step][1]; uName.classList.add('on'); }
+      else { uName.classList.remove('on'); uNum.textContent = `${step === 'start' ? '00' : pad(N)} / ${pad(N)}`; uName.textContent = step === 'open' ? 'Despiece completo' : 'Armado'; uDesc.textContent = step === 'open' ? `${N} piezas trabajando juntas.` : 'Desliza para separar las piezas.'; } }
+    // rótulos: la activa destacada (terracota), las demás tenues; lado alternado izq/der respecto al eje, con línea guía
+    tiltZ.updateMatrixWorld(); const ax = new THREE.Vector3(0, 1, 0).applyQuaternion(tilt.getWorldQuaternion(new THREE.Quaternion())); axS.set(ax.x, -ax.y).normalize();
+    const nrm = new THREE.Vector2(-axS.y, axS.x); // perpendicular en pantalla
+    const L = [];
     parts.forEach((q, i) => {
       const el = labels[i]; q.g.getWorldPosition(v).project(camera);
-      const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H, show = q.s > 0.6 || reduced;
-      el.style.opacity = show ? 1 : 0; el.classList.toggle('on', i === active);
-      // celular: columnas izquierda/derecha según el lado de la pieza; escritorio: arriba/abajo alternado
-      const right = mobile ? x >= cx : i % 2 === 1;
-      L.push({ el, i, hx: hxs[i], px: x, py: y, x, y, right, w: el.offsetWidth, h: el.offsetHeight, show });
+      const px = (v.x + 1) / 2 * W, py = (1 - v.y) / 2 * H, on = i === active;
+      const show = on; // solo la pieza activa lleva rótulo
+      el.classList.toggle('on', on); el.style.opacity = show ? (on ? 1 : 0.45) : 0;
+      const side = 1, dist = mobile ? 0 : 110, w = el.offsetWidth, h = el.offsetHeight;
+      let lx, ly;
+      if (mobile) { const right = px < W / 2; lx = right ? W - 12 - w : 12; ly = py - h / 2; }
+      else { const tx = px + nrm.x * side * dist, ty = py + nrm.y * side * dist; lx = tx + (nrm.x * side >= 0 ? 0 : -w); ly = ty - h / 2; }
+      L.push({ el, i, px, py, lx, ly, w, h, show, on });
     });
-    const off = Math.min(150, W * 0.11);
-    // escritorio: reparto equilibrado 5 izq / 5 der según la posición en pantalla del estado abierto (sin líneas cruzadas)
-    if (!mobile) { const ord = [...L].sort((a, b) => a.hx - b.hx); ord.forEach((l, k) => { l.right = k >= ord.length / 2; }); }
-    // escritorio: dos columnas fuera del conjunto (izquierda/derecha), como un plano técnico
-    const xs = L.map(l => l.px), minX = Math.min(...xs) - off * 0.5, maxX = Math.max(...xs) + off * 0.5;
-    L.forEach(l => { let lx = mobile ? (l.right ? W - 8 - l.w : 8) : (l.right ? maxX : minX - l.w); l.lx = Math.max(6, Math.min(W - 6 - l.w, lx)); l.ty = Math.max(H * 0.12, l.y - l.h / 2); });
-    // evita solapes: de arriba abajo, empuja la que choque con una anterior
-    const vis = L.filter(l => l.show).sort((a, b) => a.ty - b.ty);
-    vis.forEach((l, k) => { for (let j = 0; j < k; j++) { const o = vis[j]; if (l.lx < o.lx + o.w + 6 && o.lx < l.lx + l.w + 6 && l.ty < o.ty + o.h + 6) l.ty = o.ty + o.h + 6; } });
+    const vis = L.filter(l => l.show).sort((a, b) => a.ly - b.ly);
+    vis.forEach((l, k) => { for (let j = 0; j < k; j++) { const o = vis[j]; if (l.lx < o.lx + o.w + 4 && o.lx < l.lx + l.w + 4 && l.ly < o.ly + o.h + 4) l.ly = o.ly + o.h + 4; } });
     L.forEach(l => {
-      // celular: columnas en los bordes; escritorio: izquierda/derecha alternado con línea guía
-      const lx = l.lx, ly = Math.min(H - l.h - 8, l.ty);
-      l.el.style.transform = `translate(${lx}px,${ly}px)`;
-      const ex = l.right ? lx : lx + l.w, ey = ly + l.h / 2, kx = ex + (l.right ? -14 : 14);
-      if (![lx, ly, ex, kx, l.px, l.py].every(Number.isFinite)) return; const ln = lines[l.i]; ln.setAttribute('points', `${ex},${ey} ${kx},${ey} ${l.px},${l.py}`); ln.style.opacity = l.show ? 1 : 0; ln.classList.toggle('on', l.el.classList.contains('on'));
+      l.lx = Math.max(6, Math.min(W - 6 - l.w, l.lx)); l.ly = Math.max(6, Math.min(H - l.h - 6, l.ly));
+      l.el.style.transform = `translate(${l.lx}px,${l.ly}px)`;
+      const ex = l.lx + (l.px > l.lx + l.w / 2 ? l.w : 0), ey = l.ly + l.h / 2, ln = lines[l.i];
+      if (![ex, ey, l.px, l.py].every(Number.isFinite)) return;
+      ln.setAttribute('points', `${ex},${ey} ${l.px},${l.py}`); ln.style.opacity = l.show ? (l.on ? 1 : 0.6) : 0; ln.classList.toggle('on', l.on);
     });
   }
   addEventListener('resize', layout); requestAnimationFrame(layout);

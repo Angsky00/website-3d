@@ -28,6 +28,24 @@ export const content = {
     cierre: 'Plástico, madera y metal en una misma pieza.',
     boton: 'Cotiza tu idea',
   },
+  despiece: {
+    // TEXTO PROVISIONAL - pendiente Marketing 3D (salvo la descripción del motor, que es final)
+    eyebrow: 'Despiece del extrusor · K1C',
+    titulo: 'Dentro del extrusor',
+    texto: 'Así funciona la pieza que da forma a cada capa: el filamento entra frío, se funde en el bloque caliente y sale por la boquilla.',
+    piezas: [
+      ['Tubo PTFE', 'Guía el filamento desde el carrete hasta el extrusor.'],
+      ['Motor', 'Mueve los engranes que empujan el filamento.'],
+      ['Engranes de tracción', 'Sujetan el filamento y lo empujan hacia abajo.'],
+      ['Disipador', 'Mantiene fría la parte de arriba para que el filamento no se ablande antes de tiempo.'],
+      ['Ventilador', 'Sopla aire a través del disipador.'],
+      ['Ducto', 'Dirige el aire hacia la pieza recién impresa.'],
+      ['Bloque calentador', 'Funde el filamento a la temperatura del material.'],
+      ['Cartucho calefactor', 'La resistencia que calienta el bloque.'],
+      ['Termistor', 'Mide la temperatura para mantenerla estable.'],
+      ['Boquilla', 'Deposita el plástico fundido, línea por línea.'],
+    ],
+  },
   carpinteria: { // PROVISIONAL: contenido pendiente del usuario
     titulo: 'Carpintería',
     texto: 'Piezas en madera hechas a mano, que combinamos con impresión 3D cuando el diseño lo pide.',
