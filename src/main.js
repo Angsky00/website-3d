@@ -4,6 +4,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { createScene } from './scene.js';
+import { createFloaters } from './floaters.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -11,6 +12,7 @@ const marca = c.marca.nombre.replace(/^3D/, '<b>3D</b>');
 const iso = '/02_isotipo.svg';
 
 document.querySelector('#app').innerHTML = `
+<canvas id="floaters" aria-hidden="true"></canvas>
 <a class="skip" href="#main">Saltar al contenido</a>
 <header class="nav">
   <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${iso}" alt="" width="38" height="38"><span>${marca}</span></a>
@@ -66,6 +68,7 @@ document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
 });
 
+const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, form, .canales, .split img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
 const capa = document.querySelector('#capa');
 const final = document.querySelector('.hero-final');
@@ -89,6 +92,10 @@ if (reduced) {
     },
   });
   window.__hero = st;
+  // objetos impresos cruzando: progreso de toda la página con scrub
+  const fp = { v: 0 };
+  ScrollTrigger.create({ trigger: document.body, start: 'top top', end: 'bottom bottom', onUpdate: self => gsap.to(fp, { v: self.progress, duration: 0.8, ease: 'power2.out', overwrite: true }) });
+  gsap.ticker.add(t => { floaters.setProgress(fp.v); floaters.tick(t); });
   // entrada del hero
   gsap.from('.hero-copy > *', { opacity: 0, y: 30, duration: 1, ease: 'power3.out', stagger: 0.12, delay: 0.2 });
   gsap.utils.toArray('.card').forEach((el, i) => gsap.set(el, { opacity: 0, y: 40 }));

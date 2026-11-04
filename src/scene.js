@@ -205,7 +205,7 @@ export function createScene(canvas, { reduced }) {
     placeCamera(0);
     floor.position.copy(printer.position);
     // móvil: solo 2 gemas pequeñas en la franja libre bajo la impresora (ni tras la tarjeta ni tras la impresora)
-    const mob = [[-1.9, -1.7, -0.5, 0.28], [2.0, -1.45, -1.2, 0.34]];
+    const mob = [[-1.9, -1.7, -0.5, 0.28], [1.6, -1.45, -1.2, 0.34]];
     gems.forEach((g, i) => { const u = g.userData, m = mob[i];
       if (mobile) { g.visible = !!m; if (m) { g.position.set(m[0], m[1], m[2]); u.y = m[1]; g.scale.setScalar(m[3] / u.r); } }
       else { g.visible = true; g.position.set(u.x, u.y = u.y0, u.z); g.scale.setScalar(1); } });

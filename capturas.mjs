@@ -12,6 +12,12 @@ for (const [name, vp, mobile] of [['escritorio', { width: 1440, height: 900 }, f
     await p.waitForTimeout(2500);
     await p.screenshot({ path: `capturas/${name}_${tag}.png` });
   }
+  const extras = name === 'escritorio' ? [['extra_impresion', '#impresion'], ['extra_contacto', '#contacto']] : [['extra_carpinteria', '#carpinteria']];
+  for (const [tag, sel] of extras) {
+    const y = await p.evaluate(s => document.querySelector(s).getBoundingClientRect().top + scrollY, sel);
+    await p.evaluate(y => { __lenis.scrollTo(y, { immediate: true }); }, y); await p.waitForTimeout(2500);
+    await p.screenshot({ path: `capturas/${name}_${tag}.png` });
+  }
   await p.close();
 }
 const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, reducedMotion: 'reduce' });

@@ -67,3 +67,7 @@ footer{background:var(--carbon);color:var(--arena);text-align:center;padding:2re
 @media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
 #impresion{background:linear-gradient(to bottom,var(--carbon) 0,#4a3a30 3rem,#a8927a 7rem,var(--arena) 11rem);padding-top:calc(clamp(4rem,10vw,7rem) + 8rem)}
 #hero{box-shadow:none}
+#floaters{position:fixed;inset:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
+.hero-copy,.hero-final,.progress{z-index:3}
+section.s .wrap{position:relative;z-index:2}
+footer{position:relative;z-index:2}
