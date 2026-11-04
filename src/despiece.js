@@ -33,7 +33,10 @@ export function createDespiece(canvas, labelsEl, { reduced }) {
   const N = parts.length, hot = new THREE.Color(C.terracota);
   labelsEl.innerHTML = parts.map((p, i) => `<span class="dl"><b>${String(i + 1).padStart(2, '0')}</b> ${p.label}</span>`).join('');
   const labels = [...labelsEl.children];
-  let W = 1, H = 1, mobile = false, last = -1;
+  // líneas guía (estilo plano técnico) del rótulo a su pieza
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'dlines'); labelsEl.prepend(svg);
+  const lines = parts.map(() => { const l = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); svg.append(l); return l; });
+  let hxs = [], W = 1, H = 1, mobile = false, last = -1;
   function layout() {
     const r = canvas.getBoundingClientRect(); W = r.width || 1; H = r.height || 1; mobile = W < 820;
     renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 1.75)); renderer.setSize(W, H, false);
@@ -46,6 +49,7 @@ export function createDespiece(canvas, labelsEl, { reduced }) {
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), padW = mobile ? 1.9 : 1.35, padH = mobile ? 1.3 : 1.45;
     const d = Math.max(sz.y * padH / 2 / t, sz.x * padW / 2 / (t * camera.aspect)) + sz.z / 2;
     camera.position.set(c.x, c.y + (mobile ? 0.25 : 0.2) * sz.y * 0.1, c.z + d); camera.lookAt(c.x, c.y, c.z); camera.updateProjectionMatrix();
+    hxs = parts.map(q => q.g.getWorldPosition(new THREE.Vector3()).project(camera).x);
     last = -1; draw(cur);
   }
   const sm = t => t * t * (3 - 2 * t), cl = (a, b, v) => Math.min(b, Math.max(a, v));
@@ -71,20 +75,24 @@ export function createDespiece(canvas, labelsEl, { reduced }) {
       const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H, show = q.s > 0.6 || reduced;
       el.style.opacity = show ? 1 : 0; el.classList.toggle('on', i === active);
       // celular: columnas izquierda/derecha según el lado de la pieza; escritorio: arriba/abajo alternado
-      const right = mobile ? x >= cx : i % 2 === 0;
-      L.push({ el, x, y: mobile ? y : y + (right ? 50 : -50), right, w: el.offsetWidth, h: el.offsetHeight, show });
+      const right = mobile ? x >= cx : i % 2 === 1;
+      L.push({ el, i, hx: hxs[i], px: x, py: y, x, y, right, w: el.offsetWidth, h: el.offsetHeight, show });
     });
-    if (mobile) for (const side of [true, false]) { // evita solapes: separa en vertical dentro de cada columna
-      const col = L.filter(l => l.show && l.right === side).sort((a, b) => a.y - b.y);
-      for (let k = 1; k < col.length; k++) col[k].y = Math.max(col[k].y, col[k - 1].y + col[k - 1].h + 6);
-    }
-    if (!mobile) { const vis = L.filter(l => l.show).sort((a, b) => a.y - b.y); // escritorio: empuja hacia abajo la que choque
-      vis.forEach((l, k) => { for (let j = 0; j < k; j++) { const o = vis[j]; if (Math.abs(l.x - o.x) < (l.w + o.w) / 2 + 6 && l.y < o.y + (l.h + o.h) / 2 + 4) l.y = o.y + (l.h + o.h) / 2 + 4; } }); }
+    const off = Math.min(150, W * 0.11);
+    // escritorio: reparto equilibrado 5 izq / 5 der según la posición en pantalla del estado abierto (sin líneas cruzadas)
+    if (!mobile) { const ord = [...L].sort((a, b) => a.hx - b.hx); ord.forEach((l, k) => { l.right = k >= ord.length / 2; }); }
+    // escritorio: dos columnas fuera del conjunto (izquierda/derecha), como un plano técnico
+    const xs = L.map(l => l.px), minX = Math.min(...xs) - off * 0.5, maxX = Math.max(...xs) + off * 0.5;
+    L.forEach(l => { let lx = mobile ? (l.right ? W - 8 - l.w : 8) : (l.right ? maxX : minX - l.w); l.lx = Math.max(6, Math.min(W - 6 - l.w, lx)); l.ty = Math.max(H * 0.12, l.y - l.h / 2); });
+    // evita solapes: de arriba abajo, empuja la que choque con una anterior
+    const vis = L.filter(l => l.show).sort((a, b) => a.ty - b.ty);
+    vis.forEach((l, k) => { for (let j = 0; j < k; j++) { const o = vis[j]; if (l.lx < o.lx + o.w + 6 && o.lx < l.lx + l.w + 6 && l.ty < o.ty + o.h + 6) l.ty = o.ty + o.h + 6; } });
     L.forEach(l => {
-      let lx = mobile ? (l.right ? W - 8 - l.w : 8) : l.x - l.w / 2;
-      lx = Math.max(6, Math.min(W - 6 - l.w, lx));
-      const ly = Math.max(H * 0.12, Math.min(H - l.h - 8, l.y - l.h / 2));
+      // celular: columnas en los bordes; escritorio: izquierda/derecha alternado con línea guía
+      const lx = l.lx, ly = Math.min(H - l.h - 8, l.ty);
       l.el.style.transform = `translate(${lx}px,${ly}px)`;
+      const ex = l.right ? lx : lx + l.w, ey = ly + l.h / 2, kx = ex + (l.right ? -14 : 14);
+      const ln = lines[l.i]; ln.setAttribute('points', `${ex},${ey} ${kx},${ey} ${l.px},${l.py}`); ln.style.opacity = l.show ? 1 : 0; ln.classList.toggle('on', l.el.classList.contains('on'));
     });
   }
   addEventListener('resize', layout); requestAnimationFrame(layout);
