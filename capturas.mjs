@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 const url = 'http://localhost:4173/';
 const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
 const go = (p, y) => p.evaluate(y => __lenis.scrollTo(y, { immediate: true, force: true }), y);
-const ids = ['impresion', 'carpinteria', 'artesanias', 'nosotros', 'contacto'];
+const ids = ['impresion', 'personalizado', 'carpinteria', 'artesanias', 'nosotros', 'contacto'];
 for (const [name, vp, mobile] of [['escritorio', { width: 1440, height: 900 }, false], ['celular', { width: 390, height: 844 }, true]]) {
   const p = await b.newPage({ viewport: vp, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile });
   p.on('pageerror', e => console.log('ERR', e.message)); p.on('console', m => { if (m.type()==='error') console.log('CONSOLE', m.text()); });

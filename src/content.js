@@ -13,6 +13,21 @@ export const content = {
     tarjetas: ['Refacciones', 'Prototipos y proyectos escolares', 'Regalos personalizados', 'Para negocios'],
     dato: 'Creality K1C · PLA · PETG · materiales técnicos',
   },
+  personalizado: { // Textos finales de Marketing 3D / dirección
+    titulo: 'Si lo imaginas, lo fabricamos',
+    texto: 'Cada pieza se construye capa por capa a partir de un diseño digital. No hay moldes ni mínimos de producción, así que una sola pieza puede ser única.',
+    bloques: [
+      { titulo: 'Personalizado de verdad', texto: 'Medidas exactas, tu nombre, tu logo o la forma que necesites. Diseñamos desde cero o adaptamos tu idea, ya sea un repuesto, un regalo o un prototipo.' },
+      { titulo: 'Más que plástico', texto: 'La impresión 3D se combina con otros materiales:', lista: [
+        ['Madera', 'bases, cajas y letreros con piezas impresas encajadas.'],
+        ['Metal', 'tornillería, imanes e insertos roscados para piezas que se arman y desarman.'],
+        ['Textil y piel', 'hebillas, broches y piezas para artesanía local.'],
+        ['Resina y pintura', 'acabados lisos, brillantes o pintados a mano.'],
+      ] },
+    ],
+    cierre: 'Plástico, madera y metal en una misma pieza.',
+    boton: 'Cotiza tu idea',
+  },
   carpinteria: { // PROVISIONAL: contenido pendiente del usuario
     titulo: 'Carpintería',
     texto: 'Piezas en madera hechas a mano, que combinamos con impresión 3D cuando el diseño lo pide.',

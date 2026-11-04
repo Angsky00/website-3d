@@ -6,6 +6,7 @@ import Lenis from 'lenis';
 import { createScene } from './scene.js';
 import { createFloaters } from './floaters.js';
 import { createSectionBg } from './sectionbg.js';
+import { createDespiece } from './despiece.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,7 +20,7 @@ document.querySelector('#app').innerHTML = `
 <header class="nav">
   <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${iso}" alt="" width="38" height="38"><span>${marca}</span></a>
   <nav aria-label="Principal"><ul>
-    <li><a href="#impresion">Impresión 3D</a></li><li><a href="#carpinteria">Carpintería</a></li>
+    <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#carpinteria">Carpintería</a></li>
     <li><a href="#artesanias">Artesanías</a></li><li><a href="#nosotros">Nosotros</a></li><li><a href="#contacto">Contacto</a></li>
   </ul></nav>
 </header>
@@ -40,12 +41,22 @@ document.querySelector('#app').innerHTML = `
     <div class="cards">${c.impresion.tarjetas.map(t=>`<article class="card reveal"><h3>${t}</h3></article>`).join('')}</div>
     <p class="mono">${c.impresion.dato}</p>
   </div></section>
+  <section id="personalizado" class="s perso"><div class="wrap">
+    <span class="eyebrow">02 · Posibilidades</span><h2 class="reveal">${c.personalizado.titulo}</h2>
+    <p class="lead reveal">${c.personalizado.texto}</p>
+    <div class="bloques">${c.personalizado.bloques.map(b=>`<article class="bloque reveal"><h3>${b.titulo}</h3><p>${b.texto}</p>${b.lista?`<ul>${b.lista.map(([m,t])=>`<li><b>${m}:</b> ${t}</li>`).join('')}</ul>`:''}</article>`).join('')}</div>
+    <p class="cierre reveal">${c.personalizado.cierre}</p>
+    <a class="btn" href="#contacto">${c.personalizado.boton} <span aria-hidden="true">→</span></a>
+  </div>
+  <div class="despiece"><span class="eyebrow dtit">Despiece del extrusor · K1C</span>
+    <canvas id="despiece" role="img" aria-label="Animación: las piezas del extrusor de la impresora se separan una a una y se vuelven a armar: disipador, ventilador, ducto, bloque calentador, boquilla, termistor, cartucho calefactor, engranes de tracción, tubo PTFE y motor"></canvas>
+    <div class="dlabels" aria-hidden="true"></div></div></section>
   <section id="carpinteria" class="s alt"><div class="wrap">
-    <span class="eyebrow">02 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>
+    <span class="eyebrow">03 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>
     <p class="lead reveal">${c.carpinteria.texto}</p><div class="pending">${c.carpinteria.pendiente}</div>
   </div></section>
   <section id="artesanias" class="s"><div class="wrap">
-    <span class="eyebrow">03 · Región</span><h2 class="reveal">${c.artesanias.titulo}</h2>
+    <span class="eyebrow">04 · Región</span><h2 class="reveal">${c.artesanias.titulo}</h2>
     <p class="lead reveal">${c.artesanias.texto}</p><div class="pending">${c.artesanias.pendiente}</div>
   </div></section>
   <section id="nosotros" class="s dark"><div class="wrap split">
@@ -73,13 +84,15 @@ document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
 });
 
-const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, form, .canales, .split img' });
+const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, form, .canales, .split img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
+const desp = createDespiece(document.querySelector('#despiece'), document.querySelector('.dlabels'), { reduced });
 const capa = document.querySelector('#capa');
 const final = document.querySelector('.hero-final');
 const copy = document.querySelector('.hero-copy');
 
 if (reduced) {
+  desp.setProgress(0.78); // abierto y estático
   // reduced-motion: los objetos quietos solo existen dentro del hero; fuera de él el canvas se recorta por completo
   const fc = document.querySelector('#floaters'), hero = document.querySelector('#hero');
   const clip = () => { const b = Math.max(0, hero.getBoundingClientRect().bottom); fc.style.clipPath = `inset(0 0 ${Math.max(0, innerHeight - b)}px 0)`; fc.style.visibility = b <= 0 ? 'hidden' : 'visible'; };
@@ -122,7 +135,14 @@ if (reduced) {
   ids.forEach(id => { const sec = document.getElementById(id), cs = getComputedStyle(sec), w = document.createElement('div');
     w.className = 'sbg'; w.style.backgroundColor = cs.backgroundColor; w.style.backgroundImage = cs.backgroundImage;
     sec.before(w); w.append(sec); sec.style.background = 'transparent'; sec.style.position = 'relative'; sec.style.zIndex = 2; });
-  ids.forEach(id => { pins[id] = ScrollTrigger.create({ trigger: '#' + id, start: 'top top', end: () => '+=' + innerHeight, pin: true, pinSpacing: true }); });
+  const mkDesp = () => {
+  // despiece: el escenario se fija 3 pantallas con scrub; el enlace del menú lleva al inicio de la sección
+  const dst = ScrollTrigger.create({ trigger: '#personalizado .despiece', start: 'top top', end: () => '+=' + innerHeight * 3, pin: true, pinSpacing: true, scrub: 0.5, onUpdate: s => desp.setProgress(s.progress), onRefresh: s => desp.setProgress(s.progress) });
+  pins.personalizado = ScrollTrigger.create({ trigger: '#personalizado', start: 'top top', end: 'top top' });
+  window.__despiece = dst;
+  };
+  // orden DOM: impresion → despiece → resto (ScrollTrigger calcula los pines en orden de creación)
+  ids.forEach(id => { pins[id] = ScrollTrigger.create({ trigger: '#' + id, start: 'top top', end: () => '+=' + innerHeight, pin: true, pinSpacing: true }); if (id === 'impresion') mkDesp(); });
   window.__pins = pins;
   const clone = document.querySelector('.hero-clone'), shot = clone.querySelector('img.shot'), sceneCv = document.querySelector('#scene');
   // el clon muestra la escena SIEMPRE en capa 0: al acercarse el clon, la escena se fuerza a progreso 0 y se fotografía
@@ -135,6 +155,7 @@ if (reduced) {
     for (const id of ids) { const p = pins[id]; if (y >= p.start - 1) { act = id; q = gsap.utils.clamp(0, 1, (y - p.start) / (p.end - p.start)); } }
     const ct = clone.getBoundingClientRect().top;
     if (ct < innerHeight * 2.5) { if (!shotOk) snap(); scene.setProgress(0); gsap.killTweensOf(fp); fp.v = 0; /* flotantes en estado de scroll 0 */ capa.textContent = 0; copy.style.opacity = 1; final.style.opacity = 0; } else if (shotOk && ct > innerHeight * 4) shotOk = false;
+    if (y >= pins.personalizado.start - 1 && y < pins.carpinteria.start - 1) act = null; // el despiece no lleva objeto-fondo
     if (ct < innerHeight * 0.6) act = null; // entrando al clon del hero: el fondo de Contacto se desvanece
     bg.set(act, q); bg.tick(t);
     for (const id of ids) { const w = document.querySelector('#' + id + ' .wrap'), p = pins[id]; const qq = gsap.utils.clamp(0, 1, (y - p.start) / (p.end - p.start)); w.style.opacity = y < p.start ? 0 : gsap.utils.clamp(0, 1, (qq - 0.55) / 0.35); }
