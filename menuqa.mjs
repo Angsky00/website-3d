@@ -3,7 +3,7 @@ const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshad
 for (const [w, h, mob] of [[1440, 900, false], [390, 844, true]]) {
   const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: mob, hasTouch: mob });
   p.on('pageerror', e => console.log('ERR', e.message));
-  await p.goto('http://localhost:4173/', { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
+  await p.goto((process.env.QA_URL || 'http://localhost:4173/website-3d/'), { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
   for (const id of ['impresion', 'personalizado', 'carpinteria', 'artesanias', 'nosotros', 'contacto']) {
     await p.evaluate(() => __lenis.scrollTo(0, { immediate: true, force: true })); await p.waitForFunction(() => scrollY < 1 && !__lenis.isScrolling, null, { timeout: 10000 }); await p.waitForTimeout(400);
     // en celular el menú está oculto: se dispara el mismo enlace por código

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const url = 'http://localhost:4173/';
+const url = (process.env.QA_URL || 'http://localhost:4173/website-3d/');
 const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
 const go = (p, y) => p.evaluate(y => __lenis.scrollTo(y, { immediate: true, force: true }), y);
 const ids = ['impresion', 'personalizado', 'carpinteria', 'artesanias', 'nosotros', 'contacto'];

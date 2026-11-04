@@ -11,7 +11,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const marca = c.marca.nombre.replace(/^3D/, '<b>3D</b>');
-const iso = '/02_isotipo.svg';
+const iso = import.meta.env.BASE_URL + '02_isotipo.svg';
 
 document.querySelector('#app').innerHTML = `
 <canvas id="secbg" aria-hidden="true"></canvas>
@@ -71,7 +71,7 @@ document.querySelector('#app').innerHTML = `
     <div class="canales">${c.contacto.canales.map(n=>`<span class="canal">${n} · <small>Próximamente</small></span>`).join('')}</div>
   </div></section>
 </main>
-<footer>${c.pie}</footer>
+<footer>${c.pie}<span class="obra">Sitio en construcción</span></footer>
 ${reduced ? '' : `<div class="hero-clone" aria-hidden="true" inert><img class="shot" alt="">
   <div class="hero-copy"><span class="eyebrow">${c.contacto.ubicacion}</span><h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p><span class="btn ghost">${c.hero.boton} <span aria-hidden="true">→</span></span></div>
   <p class="progress">capa 0 / 120 · 0.20 mm</p></div><div class="loop-pad" aria-hidden="true"></div>`}`;

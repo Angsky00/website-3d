@@ -1,0 +1,18 @@
+import { chromium } from 'playwright';
+const url = process.env.QA_URL || 'http://localhost:4173/website-3d/';
+const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+const bad = [], errs = [];
+p.on('response', r => { if (r.status() >= 400) bad.push(r.status() + ' ' + r.url()); });
+p.on('requestfailed', r => bad.push('FAIL ' + r.url()));
+p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto(url, { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
+const r = await p.evaluate(async () => { await document.fonts.ready;
+  const fonts = { sans: document.fonts.check('600 16px "IBM Plex Sans"'), mono: document.fonts.check('400 16px "IBM Plex Mono"') };
+  const cv = [...document.querySelectorAll('canvas')].map(c => ({ id: c.id || c.className, w: c.width, h: c.height }));
+  const img = [...document.images].filter(i => i.getAttribute('src')).every(i => i.complete && i.naturalWidth > 0);
+  return { fonts, canvases: cv.length, canvasOk: cv.every(c => c.w > 0 && c.h > 0), imgs: img, obra: !!document.querySelector('footer .obra') };
+});
+console.log(JSON.stringify(r)); console.log('404/fallas:', bad.length, bad.join(' | ')); console.log('errores consola:', errs.length, errs.join(' | '));
+await b.close();
+if (bad.length || errs.length || !r.fonts.sans || !r.fonts.mono || !r.canvasOk || !r.imgs) process.exit(1);
