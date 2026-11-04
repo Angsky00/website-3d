@@ -21,7 +21,7 @@ const ext = (shape, depth, bevel = 0.02) => flat(new THREE.ExtrudeGeometry(shape
 const circlePath = (r, n = 10) => { const p = new THREE.Path(); for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2; i ? p.lineTo(Math.cos(a) * r, Math.sin(a) * r) : p.moveTo(r, 0); } return p; };
 const at = (g, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) => { g = g.clone(); g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(s, s, s))); return flat(g); };
 
-function models(C) {
+export function models(C) {
   const M = {};
   // --- Barquito estilo "benchy" (diseño propio): casco con proa, cabina con ventanas, techo y chimenea
   const hullS = new THREE.Shape(); hullS.moveTo(-0.55, -0.25); hullS.lineTo(0.25, -0.25); hullS.quadraticCurveTo(0.6, -0.2, 0.7, 0); hullS.quadraticCurveTo(0.6, 0.2, 0.25, 0.25); hullS.lineTo(-0.55, 0.25); hullS.lineTo(-0.6, 0); hullS.closePath();
@@ -92,8 +92,8 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
   const M = models(C), mats = {};
   // cada sección tiene sus objetos: Impresión = engranes + tuerca; Carpintería = escuadra + bisagra; Artesanías = patitos + gema; Nosotros = arco maya; Contacto = Benchy
   const SEC = mobile
-    ? { hero: ['benchy', 'gear', 'duck', 'spring'], impresion: ['gear', 'nut', 'gear2'], carpinteria: ['bracket', 'hinge'], artesanias: ['duck', 'gem', 'duck'], nosotros: ['arch'], contacto: ['benchy'] }
-    : { hero: ['benchy', 'duck', 'gear', 'spring', 'nut', 'bolt', 'spring2', 'flange'], impresion: ['gear', 'nut', 'gear2', 'nut'], carpinteria: ['bracket', 'hinge', 'bracket'], artesanias: ['duck', 'gem', 'duck'], nosotros: ['arch', 'arch'], contacto: ['benchy', 'benchy'] };
+    ? { hero: ['benchy', 'gear', 'duck', 'spring'], impresion: [], carpinteria: [], artesanias: [], nosotros: [], contacto: [] }
+    : { hero: ['benchy', 'duck', 'gear', 'spring', 'nut', 'bolt', 'spring2', 'flange'], impresion: [], carpinteria: [], artesanias: [], nosotros: [], contacto: [] } // las secciones usan su fondo propio (sectionbg.js);
   const list = [], secOf = [];
   for (const [sec, ks] of Object.entries(SEC)) ks.forEach(k => { list.push(k); secOf.push(sec); });
   const BG = 0.25; // en secciones: fondo al 20 % de opacidad + desenfoque leve, el texto conserva su contraste
@@ -151,6 +151,7 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
     let cur = 'hero'; const loc = {};
     for (const [k, e] of Object.entries(secEls)) { if (!e || k === 'hero') continue; const r = e.getBoundingClientRect(); loc[k] = (H - r.top) / (r.height + H); if (r.top < H * 0.5 && r.bottom > H * 0.5) cur = k; }
     if (secEls.impresion && secEls.impresion.getBoundingClientRect().top > H * 0.5) cur = 'hero';
+    const hc = document.querySelector('.hero-clone'); if (hc && hc.getBoundingClientRect().top < H) cur = 'none';
     for (const o of objs) { const u = o.userData; if (u.sec !== 'hero') u.lp = loc[u.sec] ?? 0; u.s += ((u.sec === cur ? 1 : 0) - u.s) * 0.2; if (u.s < 0.02) u.s = 0; }
     canvas.style.filter = cur === 'hero' ? '' : 'blur(1.2px)';
   }

@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { createScene } from './scene.js';
 import { createFloaters } from './floaters.js';
+import { createSectionBg } from './sectionbg.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -12,6 +13,7 @@ const marca = c.marca.nombre.replace(/^3D/, '<b>3D</b>');
 const iso = '/02_isotipo.svg';
 
 document.querySelector('#app').innerHTML = `
+<canvas id="secbg" aria-hidden="true"></canvas>
 <canvas id="floaters" aria-hidden="true"></canvas>
 <a class="skip" href="#main">Saltar al contenido</a>
 <header class="nav">
@@ -62,7 +64,10 @@ document.querySelector('#app').innerHTML = `
     <div class="canales">${c.contacto.canales.map(n=>`<span class="canal">${n} · <small>Próximamente</small></span>`).join('')}</div>
   </div></section>
 </main>
-<footer>${c.pie}</footer>`;
+<footer>${c.pie}</footer>
+${reduced ? '' : `<div class="hero-clone" aria-hidden="true" inert><img class="shot" alt="">
+  <div class="hero-copy"><span class="eyebrow">${c.contacto.ubicacion}</span><h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p><span class="btn ghost">${c.hero.boton} <span aria-hidden="true">→</span></span></div>
+  <p class="progress">capa 0 / 120 · 0.20 mm</p></div>`}`;
 
 document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
@@ -84,12 +89,14 @@ if (reduced) {
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   scene.setProgress(1); capa.textContent = 120; // el texto de cierre no se muestra: el hero ya ocupa ese espacio
 } else {
+  const pins = {};
   const lenis = new Lenis();
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add(t => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);
   window.__lenis = lenis;
   // menú: directo a cada sección (Lenis no interfiere con el pin del hero)
-  document.querySelectorAll('.nav a[href^="#"]').forEach(a => a.addEventListener('click', e => { const el = document.querySelector(a.getAttribute('href')); if (!el) return; e.preventDefault(); lenis.scrollTo(el, { offset: -document.querySelector('.nav').offsetHeight, duration: 1.2 }); history.replaceState(null, '', a.getAttribute('href')); }));
+  document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { const id = a.getAttribute('href').slice(1), el = document.getElementById(id); if (!el) return; e.preventDefault();
+    const y = id === 'hero' ? 0 : pins[id] ? pins[id].end : el; lenis.scrollTo(y, { duration: 1.2 }); history.replaceState(null, '', '#' + id); }));
   const st = ScrollTrigger.create({
     trigger: '#hero', start: 'top top', end: () => '+=' + window.innerHeight * 3,
     pin: true, scrub: 0.6,
@@ -105,6 +112,30 @@ if (reduced) {
   const fp = { v: 0 };
   ScrollTrigger.create({ trigger: document.body, start: 'top top', end: 'bottom bottom', onUpdate: self => gsap.to(fp, { v: self.progress, duration: 0.8, ease: 'power2.out', overwrite: true }) });
   gsap.ticker.add(t => { floaters.setProgress(fp.v); floaters.tick(t); });
+  // A) fondo por sección: pin ~100vh; el objeto vuela hacia cámara, se queda como fondo y luego entra el contenido
+  const bg = createSectionBg(document.querySelector('#secbg'));
+  const ids = ['impresion', 'carpinteria', 'artesanias', 'nosotros', 'contacto'];
+  // capas: fondo de color de la sección (envoltura) < canvas del objeto-fondo < contenido de la sección
+  ids.forEach(id => { const sec = document.getElementById(id), cs = getComputedStyle(sec), w = document.createElement('div');
+    w.className = 'sbg'; w.style.backgroundColor = cs.backgroundColor; w.style.backgroundImage = cs.backgroundImage;
+    sec.before(w); w.append(sec); sec.style.background = 'transparent'; sec.style.position = 'relative'; sec.style.zIndex = 2; });
+  ids.forEach(id => { pins[id] = ScrollTrigger.create({ trigger: '#' + id, start: 'top top', end: () => '+=' + innerHeight, pin: true, pinSpacing: true }); });
+  window.__pins = pins;
+  const clone = document.querySelector('.hero-clone'), shot = clone.querySelector('img.shot'), sceneCv = document.querySelector('#scene');
+  const snap = () => { if (scrollY < 2) shot.src = sceneCv.toDataURL('image/png'); }; // el clon muestra la escena en capa 0
+  setTimeout(snap, 1400); addEventListener('resize', () => setTimeout(snap, 600));
+  let jumping = false;
+  gsap.ticker.add(t => {
+    const y = lenis.scroll ?? scrollY; let act = null, q = 0;
+    for (const id of ids) { const p = pins[id]; if (y >= p.start - 1) { act = id; q = gsap.utils.clamp(0, 1, (y - p.start) / (p.end - p.start)); } }
+    const ct = clone.getBoundingClientRect().top;
+    if (ct < innerHeight * 0.6) act = null; // entrando al clon del hero: el fondo de Contacto se desvanece
+    bg.set(act, q); bg.tick(t);
+    for (const id of ids) { const w = document.querySelector('#' + id + ' .wrap'), p = pins[id]; const qq = gsap.utils.clamp(0, 1, (y - p.start) / (p.end - p.start)); w.style.opacity = y < p.start ? 0 : gsap.utils.clamp(0, 1, (qq - 0.55) / 0.35); }
+    // B) loop: al llegar al inicio del clon (más allá del pie) → arriba, capa 0, sin salto visible; nunca con un campo enfocado
+    const busy = document.activeElement && document.activeElement.closest && document.activeElement.closest('form');
+    if (!jumping && !busy && ct <= 1) { jumping = true; lenis.scrollTo(0, { immediate: true, force: true }); gsap.killTweensOf(fp); fp.v = 0; scene.setProgress(0); capa.textContent = 0; copy.style.opacity = 1; final.style.opacity = 0; ScrollTrigger.update(); requestAnimationFrame(() => { jumping = false; }); }
+  });
   // entrada del hero
   gsap.from('.hero-copy > *', { opacity: 0, y: 30, duration: 1, ease: 'power3.out', stagger: 0.12, delay: 0.2 });
   gsap.utils.toArray('.card').forEach((el, i) => gsap.set(el, { opacity: 0, y: 40 }));
