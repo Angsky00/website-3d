@@ -22,7 +22,7 @@ export function createDespiece(canvas, labelsEl, { reduced }) {
   add('ducto', A, (g, m) => { mesh(new THREE.BoxGeometry(1.0, 0.35, 0.5), m, 0, 0, 0, g); mesh(new THREE.BoxGeometry(0.7, 0.12, 0.3), m, 0, -0.22, 0.12, g); g.position.set(0, -0.62, 0.55); }, [0, -0.5, 1.3]);
   add('tubo PTFE', '#efe6d6', (g, m) => { m.transparent = true; m.opacity = 0.85; mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.5, 16), m, 0, 0, 0, g);
     mesh(new THREE.CylinderGeometry(0.022, 0.022, 2.6, 8), new THREE.MeshStandardMaterial({ color: C.jade, emissive: new THREE.Color(C.jade), emissiveIntensity: 0.25 }), 0, 0.55, 0, g); g.position.set(0, 2.15, 0); }, [0, 2.4, 0]);
-  add('motor', K, (g, m) => { mesh(new THREE.BoxGeometry(0.85, 0.85, 0.7), m, 0, 0, 0, g); mesh(new THREE.BoxGeometry(0.87, 0.06, 0.72), mat(A), 0, 0.2, 0, g); mesh(new THREE.BoxGeometry(0.87, 0.06, 0.72), mat(A), 0, -0.2, 0, g); g.position.set(-0.75, 1.25, -0.1); }, [-1.5, 0.7, 0]);
+  add('Motor: mueve los engranes que empujan el filamento.', K, (g, m) => { mesh(new THREE.BoxGeometry(0.85, 0.85, 0.7), m, 0, 0, 0, g); mesh(new THREE.BoxGeometry(0.87, 0.06, 0.72), mat(A), 0, 0.2, 0, g); mesh(new THREE.BoxGeometry(0.87, 0.06, 0.72), mat(A), 0, -0.2, 0, g); g.position.set(-0.75, 1.25, -0.1); }, [-1.5, 0.7, 0]);
   add('engranes de tracción', A, (g, m) => { const geo = new THREE.ExtrudeGeometry(gearShape(0.26, 14), { depth: 0.14, bevelEnabled: false }); mesh(geo, m, -0.29, 0, 0, g); mesh(geo, m, 0.29, 0, 0, g); g.position.set(0, 1.25, 0); }, [0, 1.5, 0.5]);
   add('cartucho calefactor', K, (g, m) => { const c = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.9, 16), m, 0, 0, 0, g); c.rotation.z = Math.PI / 2; g.position.set(0.05, -0.62, 0.1); }, [1.5, -0.4, 0]);
   add('termistor', A, (g, m) => { const c = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 12), m, 0, 0, 0, g); c.rotation.z = Math.PI / 2; mesh(new THREE.SphereGeometry(0.06, 10, 8), mat(K), -0.3, 0, 0, g); g.position.set(0.05, -0.8, -0.12); }, [-1.4, -0.9, 0]);
@@ -48,14 +48,16 @@ export function createDespiece(canvas, labelsEl, { reduced }) {
     const box = new THREE.Box3().setFromObject(root), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), padW = mobile ? 1.9 : 1.35, padH = mobile ? 1.3 : 1.45;
     const d = Math.max(sz.y * padH / 2 / t, sz.x * padW / 2 / (t * camera.aspect)) + sz.z / 2;
-    camera.position.set(c.x, c.y + (mobile ? 0.25 : 0.2) * sz.y * 0.1, c.z + d); camera.lookAt(c.x, c.y, c.z); camera.updateProjectionMatrix();
+    camera.position.set(c.x, c.y + (mobile ? 0.25 : 0.2) * sz.y * 0.1, c.z + d); camera.lookAt(c.x, c.y, c.z); camera.updateProjectionMatrix(); ready = W > 1 && H > 1;
     hxs = parts.map(q => q.g.getWorldPosition(new THREE.Vector3()).project(camera).x);
     last = -1; draw(cur);
   }
   const sm = t => t * t * (3 - 2 * t), cl = (a, b, v) => Math.min(b, Math.max(a, v));
   let cur = reduced ? 0.78 : 0;
   const v = new THREE.Vector3();
+  let ready = false;
   function draw(p) {
+    if (!ready) return; // antes del primer layout la cámara está en el origen → proyecciones NaN
     // separación: 0.04–0.70 una por una; 0.70–0.82 abierto; 0.82–0.98 rearmado (todas juntas, en orden inverso)
     const back = sm(cl(0, 1, (p - 0.82) / 0.16));
     let active = -1;
@@ -92,7 +94,7 @@ export function createDespiece(canvas, labelsEl, { reduced }) {
       const lx = l.lx, ly = Math.min(H - l.h - 8, l.ty);
       l.el.style.transform = `translate(${lx}px,${ly}px)`;
       const ex = l.right ? lx : lx + l.w, ey = ly + l.h / 2, kx = ex + (l.right ? -14 : 14);
-      const ln = lines[l.i]; ln.setAttribute('points', `${ex},${ey} ${kx},${ey} ${l.px},${l.py}`); ln.style.opacity = l.show ? 1 : 0; ln.classList.toggle('on', l.el.classList.contains('on'));
+      if (![lx, ly, ex, kx, l.px, l.py].every(Number.isFinite)) return; const ln = lines[l.i]; ln.setAttribute('points', `${ex},${ey} ${kx},${ey} ${l.px},${l.py}`); ln.style.opacity = l.show ? 1 : 0; ln.classList.toggle('on', l.el.classList.contains('on'));
     });
   }
   addEventListener('resize', layout); requestAnimationFrame(layout);
