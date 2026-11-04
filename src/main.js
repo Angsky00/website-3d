@@ -67,7 +67,7 @@ document.querySelector('#app').innerHTML = `
 <footer>${c.pie}</footer>
 ${reduced ? '' : `<div class="hero-clone" aria-hidden="true" inert><img class="shot" alt="">
   <div class="hero-copy"><span class="eyebrow">${c.contacto.ubicacion}</span><h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p><span class="btn ghost">${c.hero.boton} <span aria-hidden="true">→</span></span></div>
-  <p class="progress">capa 0 / 120 · 0.20 mm</p></div>`}`;
+  <p class="progress">capa 0 / 120 · 0.20 mm</p></div><div class="loop-pad" aria-hidden="true"></div>`}`;
 
 document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
@@ -122,19 +122,22 @@ if (reduced) {
   ids.forEach(id => { pins[id] = ScrollTrigger.create({ trigger: '#' + id, start: 'top top', end: () => '+=' + innerHeight, pin: true, pinSpacing: true }); });
   window.__pins = pins;
   const clone = document.querySelector('.hero-clone'), shot = clone.querySelector('img.shot'), sceneCv = document.querySelector('#scene');
-  const snap = () => { if (scrollY < 2) shot.src = sceneCv.toDataURL('image/png'); }; // el clon muestra la escena en capa 0
-  setTimeout(snap, 1400); addEventListener('resize', () => setTimeout(snap, 600));
+  // el clon muestra la escena SIEMPRE en capa 0: al acercarse el clon, la escena se fuerza a progreso 0 y se fotografía
+  let shotOk = false;
+  const snap = () => { scene.setProgress(0); requestAnimationFrame(() => requestAnimationFrame(() => { shot.src = sceneCv.toDataURL('image/png'); shotOk = true; })); };
+  addEventListener('resize', () => { shotOk = false; });
   let jumping = false;
   gsap.ticker.add(t => {
     const y = lenis.scroll ?? scrollY; let act = null, q = 0;
     for (const id of ids) { const p = pins[id]; if (y >= p.start - 1) { act = id; q = gsap.utils.clamp(0, 1, (y - p.start) / (p.end - p.start)); } }
     const ct = clone.getBoundingClientRect().top;
+    if (ct < innerHeight * 2.5) { if (!shotOk) snap(); scene.setProgress(0); gsap.killTweensOf(fp); fp.v = 0; /* flotantes en estado de scroll 0 */ capa.textContent = 0; copy.style.opacity = 1; final.style.opacity = 0; } else if (shotOk && ct > innerHeight * 4) shotOk = false;
     if (ct < innerHeight * 0.6) act = null; // entrando al clon del hero: el fondo de Contacto se desvanece
     bg.set(act, q); bg.tick(t);
     for (const id of ids) { const w = document.querySelector('#' + id + ' .wrap'), p = pins[id]; const qq = gsap.utils.clamp(0, 1, (y - p.start) / (p.end - p.start)); w.style.opacity = y < p.start ? 0 : gsap.utils.clamp(0, 1, (qq - 0.55) / 0.35); }
     // B) loop: al llegar al inicio del clon (más allá del pie) → arriba, capa 0, sin salto visible; nunca con un campo enfocado
     const busy = document.activeElement && document.activeElement.closest && document.activeElement.closest('form');
-    if (!jumping && !busy && ct <= 1) { jumping = true; lenis.scrollTo(0, { immediate: true, force: true }); gsap.killTweensOf(fp); fp.v = 0; scene.setProgress(0); capa.textContent = 0; copy.style.opacity = 1; final.style.opacity = 0; ScrollTrigger.update(); requestAnimationFrame(() => { jumping = false; }); }
+    if (!jumping && !busy && !window.__noLoop && ct < 1) { jumping = true; lenis.scrollTo(0, { immediate: true, force: true }); gsap.killTweensOf(fp); fp.v = 0; scene.setProgress(0); capa.textContent = 0; copy.style.opacity = 1; final.style.opacity = 0; ScrollTrigger.update(); requestAnimationFrame(() => { jumping = false; }); }
   });
   // entrada del hero
   gsap.from('.hero-copy > *', { opacity: 0, y: 30, duration: 1, ease: 'power3.out', stagger: 0.12, delay: 0.2 });

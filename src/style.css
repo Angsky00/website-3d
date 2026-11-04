@@ -75,4 +75,4 @@ footer{position:relative;z-index:2}
 #secbg{position:fixed;inset:0;width:100vw;height:100vh;z-index:1;pointer-events:none;opacity:0}
 .hero-clone{display:block}.hero-clone img.shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hero-clone .hero-copy,.hero-clone .progress{opacity:1}
-.hero-clone{height:calc(100vh + 2px)}
+.loop-pad{height:60vh;background:var(--carbon)}

@@ -151,7 +151,6 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
     let cur = 'hero'; const loc = {};
     for (const [k, e] of Object.entries(secEls)) { if (!e || k === 'hero') continue; const r = e.getBoundingClientRect(); loc[k] = (H - r.top) / (r.height + H); if (r.top < H * 0.5 && r.bottom > H * 0.5) cur = k; }
     if (secEls.impresion && secEls.impresion.getBoundingClientRect().top > H * 0.5) cur = 'hero';
-    const hc = document.querySelector('.hero-clone'); if (hc && hc.getBoundingClientRect().top < H) cur = 'none';
     for (const o of objs) { const u = o.userData; if (u.sec !== 'hero') u.lp = loc[u.sec] ?? 0; u.s += ((u.sec === cur ? 1 : 0) - u.s) * 0.2; if (u.s < 0.02) u.s = 0; }
     canvas.style.filter = cur === 'hero' ? '' : 'blur(1.2px)';
   }
