@@ -200,7 +200,7 @@ export function createScene(canvas, { reduced }) {
     const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false);
     camera.aspect = w / h; const mobile = w / h < 0.9;
     camera.fov = mobile ? 42 : 30; camera.updateProjectionMatrix();
-    if (mobile) { printer.position.set(0, -0.2, 0); camBase.set(0, 3.0, 14.5); camTarget.set(0, 2.6, 0); }
+    if (mobile) { printer.position.set(0, -0.2, 0); camBase.set(0, 3.0, 14.5); camTarget.set(0, 2.6, 0); if (w < 375) { camBase.set(0, 3.9, 15.5); camTarget.set(0, 3.5, 0); } } // <375 px: el modelo baja para que la tarjeta no tape el pórtico
     else { printer.position.set(1.7, 0, 0); camBase.set(-0.2, 2.8, 10.8); camTarget.set(0.9, 1.75, 0); }
     placeCamera(0);
     floor.position.copy(printer.position);

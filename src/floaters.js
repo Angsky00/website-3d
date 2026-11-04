@@ -68,6 +68,12 @@ function models(C) {
   const helix = Array.from({ length: 121 }, (_, i) => { const a = i / 120 * Math.PI * 2 * 6; return new THREE.Vector3(Math.cos(a) * 0.22, -0.45 + i / 120 * 0.9, Math.sin(a) * 0.22); });
   M.spring = [[flat(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helix), 160, 0.035, 5)), C.jade]];
   M.spring2 = [[flat(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helix.map(v => new THREE.Vector3(v.x * 0.7, v.y * 0.8, v.z * 0.7))), 160, 0.03, 5)), C.carbon]];
+  // --- Gema facetada (Artesanías)
+  M.gem = [[flat(new THREE.OctahedronGeometry(0.42, 0).scale(1, 1.35, 1)), C.jade]];
+  // --- Arco maya (isotipo): bloque con falsa bóveda escalonada
+  const ar = new THREE.Shape(); ar.moveTo(-0.5, -0.45); ar.lineTo(0.5, -0.45); ar.lineTo(0.5, 0.45); ar.lineTo(-0.5, 0.45); ar.closePath();
+  const vh = new THREE.Path(); [[-0.2, -0.45], [-0.2, -0.05], [-0.13, -0.05], [-0.13, 0.08], [-0.06, 0.08], [-0.06, 0.2], [0, 0.28], [0.06, 0.2], [0.06, 0.08], [0.13, 0.08], [0.13, -0.05], [0.2, -0.05], [0.2, -0.45]].forEach(([x, y], k) => k ? vh.lineTo(x, y) : vh.moveTo(x, y)); ar.holes.push(vh);
+  M.arch = [[ext(ar, 0.22, 0.015), C.terracota], [flat(at(new THREE.BoxGeometry(1.1, 0.08, 0.3), 0, 0.5, 0)), C.jade]];
   return M;
 }
 
@@ -84,13 +90,18 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
   const rim = new THREE.DirectionalLight(new THREE.Color(C.jade), 0.9); rim.position.set(-5, 2, -3); scene.add(rim);
 
   const M = models(C), mats = {};
-  const kinds = ['benchy', 'duck', 'gear', 'spring', 'nut', 'hinge', 'duck', 'bolt', 'bracket', 'gear2', 'benchy', 'flange', 'spring2', 'duck', 'gear', 'spring'];
-  const list = mobile ? ['benchy', 'duck', 'gear', 'spring', 'nut', 'gear2', 'spring2', 'duck', 'bolt'] : kinds;
+  // cada sección tiene sus objetos: Impresión = engranes + tuerca; Carpintería = escuadra + bisagra; Artesanías = patitos + gema; Nosotros = arco maya; Contacto = Benchy
+  const SEC = mobile
+    ? { hero: ['benchy', 'gear', 'duck', 'spring'], impresion: ['gear', 'nut', 'gear2'], carpinteria: ['bracket', 'hinge'], artesanias: ['duck', 'gem', 'duck'], nosotros: ['arch'], contacto: ['benchy'] }
+    : { hero: ['benchy', 'duck', 'gear', 'spring', 'nut', 'bolt', 'spring2', 'flange'], impresion: ['gear', 'nut', 'gear2', 'nut'], carpinteria: ['bracket', 'hinge', 'bracket'], artesanias: ['duck', 'gem', 'duck'], nosotros: ['arch', 'arch'], contacto: ['benchy', 'benchy'] };
+  const list = [], secOf = [];
+  for (const [sec, ks] of Object.entries(SEC)) ks.forEach(k => { list.push(k); secOf.push(sec); });
+  const BG = 0.25; // en secciones: fondo al 20 % de opacidad + desenfoque leve, el texto conserva su contraste
   const objs = list.map((k, i) => {
     const g = new THREE.Group(); for (const [geo, c] of M[k]) { const m = (mats[c] ??= printMat(c)).clone(); m.onBeforeCompile = mats[c].onBeforeCompile; m.transparent = true; g.add(new THREE.Mesh(geo, m)); } // geometría compartida, sin sombras
     const z = -1 - (i * 2.3 % 5);                     // profundidad → parallax
-    const side = mobile && i < 7 ? (i % 3 === 0 ? -1 : 1) : (i % 2 ? 1 : -1);                         // entra por izquierda o derecha
-    g.userData = { lane: mobile && i < 7, a: 1, z, side, off: i / list.length, speed: 0.9 + (i * 0.37 % 0.5), curve: 0.6 + (i * 0.53 % 1.2), spin: new THREE.Vector3(0.6 + i % 3 * 0.3, 1 + i % 2, 0.3), base: (mobile ? (i < 7 ? 0.4 : 0.42) : 0.95) * (0.85 + (i * 0.29 % 0.4)) };
+    const side = mobile ? (i % 3 === 0 ? -1 : 1) : (i % 2 ? 1 : -1);                         // entra por izquierda o derecha
+    g.userData = { sec: secOf[i], s: secOf[i] === 'hero' ? 1 : 0, lane: mobile || secOf[i] !== 'hero', a: 1, z, side, off: i / list.length, speed: 0.9 + (i * 0.37 % 0.5), curve: 0.6 + (i * 0.53 % 1.2), spin: new THREE.Vector3(0.6 + i % 3 * 0.3, 1 + i % 2, 0.3), base: (mobile ? 0.4 : 0.95) * (0.85 + (i * 0.29 % 0.4)) };
     g.scale.setScalar(g.userData.base); scene.add(g); return g;
   });
   let p = 0, W = 1, H = 1;
@@ -100,13 +111,15 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
   const halfAt = z => { const d = camera.position.z - z, hh = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * d; return [hh * camera.aspect, hh]; };
   function place(o, prog, t) {
     const u = o.userData, [hw, hh] = halfAt(u.z);
-    const f = ((prog * u.speed * 3 + u.off) % 1 + 1) % 1;             // cada objeto cruza ~3 veces en la página, escalonado
-    if (mobile && o.userData.lane) {
+    const lp = u.sec === 'hero' ? prog * 3 : (u.lp ?? 0); // objetos de sección: avanzan con el scroll de su propia sección
+    const f = ((lp * u.speed + u.off) % 1 + 1) % 1;             // cada objeto cruza ~3 veces en la página, escalonado
+    if (o.userData.lane) {
       // celular: carriles en los bordes; bajan/suben con el scroll asomándose medio fuera de pantalla
-      const f2 = ((prog * u.speed * 5 + u.off) % 1 + 1) % 1; // más pasadas en celular
-      const inner = hw - u.base * 0.55, out = hw + u.base * 0.8; // dentro: visible en huecos; fuera: escondido tras el borde
+      const f2 = ((lp * u.speed * (u.sec === 'hero' ? 5 / 3 : 1) + u.off) % 1 + 1) % 1; // más pasadas en celular
+      const inner = hw - u.base * (mobile ? 0.55 : 1.1), out = hw + u.base * 0.8; // dentro: visible en huecos; fuera: escondido tras el borde
       const x = u.side * THREE.MathUtils.lerp(out, inner, u.k ?? 0);
-      const y = THREE.MathUtils.lerp(1.15, -1.15, f2) * hh;
+      const yr = u.sec === 'hero' ? 1.15 : 0.82; // objetos de sección: siempre dentro de la pantalla mientras su sección está activa
+      const y = THREE.MathUtils.lerp(yr, -yr, u.sec === 'hero' ? f2 : 0.5 - 0.5 * Math.cos(f2 * Math.PI * 2)) * hh;
       o.position.set(x, y, u.z);
     } else {
     const x = THREE.MathUtils.lerp(-1.25, 1.25, f) * hw * u.side;
@@ -120,11 +133,11 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
   const v = new THREE.Vector3();
   function fade(o, rects, instant) {
     v.copy(o.position).project(camera);
-    const sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H, [, hh] = halfAt(o.userData.z), rad = o.userData.base * (mobile ? 0.6 : 0.8) / hh * H / 2 + (mobile ? (o.userData.lane ? 0 : 6) : 36); // margen amplio: se va antes de llegar
+    const sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H, [, hh] = halfAt(o.userData.z), rad = o.userData.lane ? o.userData.base * 0.6 / hh * H / 2 + 4 : o.userData.base * (mobile ? 0.6 : 0.8) / hh * H / 2 + (mobile ? 6 : 36); // margen amplio: se va antes de llegar
     const hit = rects.some(r => sx + rad > r.left && sx - rad < r.right && sy + rad > r.top && sy - rad < r.bottom);
-    const target = hit ? 0 : 1; o.userData.a = instant ? target : o.userData.a + (target - o.userData.a) * 0.3; if (o.userData.a < 0.03) o.userData.a = 0;
+    const u = o.userData, target = hit ? 0 : u.s * (u.sec === 'hero' ? 1 : BG); u.a = instant ? target : u.a + (target - u.a) * 0.3; if (o.userData.a < 0.01) o.userData.a = 0;
     o.visible = o.userData.a > 0;
-    o.traverse(m => { if (m.material) { m.material.opacity = o.userData.a; m.material.depthWrite = o.userData.a > 0.9; } });
+    o.traverse(m => { if (m.material) { m.material.opacity = o.userData.a; m.material.depthWrite = o.userData.a > 0.9 || (u.sec !== 'hero' && o.userData.a > BG * 0.9); } });
   }
   const els = avoid ? [...document.querySelectorAll(avoid)] : [];
     const rng = document.createRange();
@@ -133,13 +146,21 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
   function visibleRects() { const out = []; for (const e of els) { const r = e.getBoundingClientRect(); if (r.bottom < 0 || r.top > H || !r.width) continue; if (+getComputedStyle(e).opacity < 0.1) continue;
     if (tight(e)) { rng.selectNodeContents(e); out.push(...rng.getClientRects()); } else if (mobile && e.matches('.canales')) { for (const c of e.children) out.push(c.getBoundingClientRect()); } else out.push(r); } return out; }
   const hitAt = (x, y, z, rad, rects) => { v.set(x, y, z).project(camera); const sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H; return rects.some(r => sx + rad > r.left && sx - rad < r.right && sy + rad > r.top && sy - rad < r.bottom); };
-  function render(prog, t = 0, instant = false) { const rects = visibleRects(); for (const o of objs) {
-    if (mobile && o.userData.lane) { // carril de borde: entra a la pantalla solo donde hay hueco (entre bloques/secciones) y se esconde junto al texto
+  const secEls = {}; for (const k of Object.keys(SEC)) secEls[k] = k === 'hero' ? document.querySelector('.hero, #hero') : document.getElementById(k);
+  function sections() { // sección activa = la que ocupa el centro de la pantalla; progreso local de cada sección
+    let cur = 'hero'; const loc = {};
+    for (const [k, e] of Object.entries(secEls)) { if (!e || k === 'hero') continue; const r = e.getBoundingClientRect(); loc[k] = (H - r.top) / (r.height + H); if (r.top < H * 0.5 && r.bottom > H * 0.5) cur = k; }
+    if (secEls.impresion && secEls.impresion.getBoundingClientRect().top > H * 0.5) cur = 'hero';
+    for (const o of objs) { const u = o.userData; if (u.sec !== 'hero') u.lp = loc[u.sec] ?? 0; u.s += ((u.sec === cur ? 1 : 0) - u.s) * 0.2; if (u.s < 0.02) u.s = 0; }
+    canvas.style.filter = cur === 'hero' ? '' : 'blur(1.2px)';
+  }
+  function render(prog, t = 0, instant = false) { sections(); const rects = visibleRects(); for (const o of objs) {
+    if (o.userData.lane) { // carril de borde: entra a la pantalla solo donde hay hueco (entre bloques/secciones) y se esconde junto al texto
       const u = o.userData; place(o, prog, t); const [hw, hh] = halfAt(u.z), rad = u.base * 0.6 / hh * H / 2 + 4;
-      const free = !hitAt(u.side * (hw - u.base * 0.55), o.position.y, u.z, rad, rects);
+      const free = !hitAt(u.side * (hw - u.base * (mobile ? 0.55 : 1.1)), o.position.y, u.z, rad, rects);
       u.k = (u.k ?? 0) + ((free ? 1 : 0) - (u.k ?? 0)) * 0.35;
     }
-    place(o, prog, t); fade(o, rects, instant); } renderer.render(scene, camera); }
+    if (!o.userData.s && !o.userData.a) { o.visible = false; continue; } place(o, prog, t); fade(o, rects, instant); } renderer.render(scene, camera); }
   if (reduced) { // quietos: posiciones fijas en los márgenes, un solo render
     const fixed = mobile ? [[-0.85, -0.55], [0.85, -0.7], [-0.85, 0.55]] : [[-0.88, 0.6], [0.9, -0.65], [-0.9, -0.7], [0.88, 0.45]];
     objs.forEach((o, i) => { const f = fixed[i]; o.visible = !!f; if (!f) return; const [hw, hh] = halfAt(o.userData.z); o.position.set(f[0] * hw, f[1] * hh, o.userData.z); o.rotation.set(0.4, 0.6 + i, 0.1); });

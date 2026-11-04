@@ -79,12 +79,17 @@ if (reduced) {
   const fc = document.querySelector('#floaters'), hero = document.querySelector('#hero');
   const clip = () => { const b = Math.max(0, hero.getBoundingClientRect().bottom); fc.style.clipPath = `inset(0 0 ${Math.max(0, innerHeight - b)}px 0)`; fc.style.visibility = b <= 0 ? 'hidden' : 'visible'; };
   clip(); addEventListener('scroll', clip, { passive: true }); addEventListener('resize', clip);
+  // secciones: solo fundido de opacidad (sin desplazamiento, sin acercamiento)
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   scene.setProgress(1); capa.textContent = 120; // el texto de cierre no se muestra: el hero ya ocupa ese espacio
 } else {
   const lenis = new Lenis();
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add(t => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);
   window.__lenis = lenis;
+  // menú: directo a cada sección (Lenis no interfiere con el pin del hero)
+  document.querySelectorAll('.nav a[href^="#"]').forEach(a => a.addEventListener('click', e => { const el = document.querySelector(a.getAttribute('href')); if (!el) return; e.preventDefault(); lenis.scrollTo(el, { offset: -document.querySelector('.nav').offsetHeight, duration: 1.2 }); history.replaceState(null, '', a.getAttribute('href')); }));
   const st = ScrollTrigger.create({
     trigger: '#hero', start: 'top top', end: () => '+=' + window.innerHeight * 3,
     pin: true, scrub: 0.6,
