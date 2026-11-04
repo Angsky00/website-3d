@@ -15,58 +15,96 @@ export function createScene(canvas, { reduced }) {
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
 
   scene.add(new THREE.HemisphereLight(0xfff5e6, 0x3a2e28, 1.4));
-  const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 7, 6); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); scene.add(key);
+  const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(4, 8, 6); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); key.shadow.bias = -0.0005; scene.add(key);
+  const fill = new THREE.DirectionalLight(0xfff0e0, 0.8); fill.position.set(-4, 3, 5); scene.add(fill);
   const rim = new THREE.DirectionalLight(new THREE.Color(C.jade), 1.2); rim.position.set(-5, 3, -4); scene.add(rim);
 
-  // --- Impresora estilo K1C (caja cerrada, marco oscuro) ---
+  // --- Impresora abierta: base, cama, dos postes y pórtico X que sube con la capa ---
   const printer = new THREE.Group(); scene.add(printer);
-  const W = 2.6, H = 3.0, D = 2.6, t = 0.12;
-  const dark = new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.55, metalness: 0.3 });
-  const panel = new THREE.MeshStandardMaterial({ color: 0x2a2522, roughness: 0.7, metalness: 0.15 });
-  const metal = new THREE.MeshStandardMaterial({ color: 0x9a9590, roughness: 0.3, metalness: 0.9 });
-  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; printer.add(o); return o; };
-  box(W, t * 2.2, D, dark, 0, t * 1.1, 0);           // base
-  box(W, t, D, dark, 0, H - t / 2, 0);                // techo
-  box(t, H, D, panel, -W / 2 + t / 2, H / 2, 0);      // lados
-  box(t, H, D, panel, W / 2 - t / 2, H / 2, 0);
-  box(W, H, t, panel, 0, H / 2, -D / 2 + t / 2);      // fondo
-  for (const sx of [-1, 1]) box(t * 1.3, H, t * 1.3, dark, sx * (W / 2 - t * 0.6), H / 2, D / 2 - t * 0.6); // postes frontales
-  // franja / pantalla
-  box(0.7, 0.16, 0.02, new THREE.MeshStandardMaterial({ color: 0x111111, emissive: new THREE.Color(C.jade), emissiveIntensity: 0.6 }), 0, t * 1.1, D / 2 + 0.01);
-  box(W * 0.98, 0.03, 0.02, new THREE.MeshStandardMaterial({ color: C.terracota, emissive: C.terracota, emissiveIntensity: 0.4 }), 0, H - t - 0.02, D / 2 - 0.02);
-  // puerta de vidrio
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(W - t * 2.4, H - t * 3.4, 0.03),
-    new THREE.MeshPhysicalMaterial({ color: 0xdfe8e4, transparent: true, opacity: 0.14, roughness: 0.05, metalness: 0, depthWrite: false }));
-  glass.position.set(0, H / 2 + 0.04, D / 2 - 0.02); printer.add(glass);
-  box(0.05, 0.6, 0.06, metal, W / 2 - 0.35, H / 2, D / 2 + 0.02); // manija
-  // luz interior
-  const inner = new THREE.PointLight(0xfff1dc, 2.5, 4, 1.5); inner.position.set(0, H - 0.3, 0.9); printer.add(inner);
+  const dark = new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.55, metalness: 0.25 });
+  const alu = new THREE.MeshStandardMaterial({ color: 0x3a3532, roughness: 0.45, metalness: 0.6 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0xa8a39d, roughness: 0.3, metalness: 0.9 });
+  const brass = new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.25 });
+  const grey = new THREE.MeshStandardMaterial({ color: 0x55504c, roughness: 0.5, metalness: 0.4 });
+  const blackPl = new THREE.MeshStandardMaterial({ color: 0x141211, roughness: 0.7 });
+  const box = (w, h, d, m, x, y, z, parent = printer) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; parent.add(o); return o; };
+  const cyl = (r, h, m, parent, seg = 20) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), m); o.castShadow = true; parent.add(o); return o; };
+  const PX = 1.45, PZ = -0.42, PH = 3.35; // postes
+  box(3.3, 0.14, 2.3, dark, 0, 0.07, 0);                       // base delgada
+  box(3.3, 0.02, 0.02, new THREE.MeshStandardMaterial({ color: C.terracota }), 0, 0.12, 1.151); // filo terracota
+  box(0.5, 0.12, 0.01, new THREE.MeshStandardMaterial({ color: 0x111111, emissive: new THREE.Color(C.jade), emissiveIntensity: 0.5 }), 0.95, 0.07, 1.151); // pantalla
+  const bedY = 0.42;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(0.05, bedY - 0.14, 0.05, metal, sx * 0.95, (bedY + 0.14) / 2, sz * 0.7);
+  box(2.4, 0.05, 1.8, alu, 0, bedY, 0);                         // placa
+  // hoja PEI con textura de puntos
+  const tc = document.createElement('canvas'); tc.width = tc.height = 256; const tx = tc.getContext('2d');
+  tx.fillStyle = '#2a2624'; tx.fillRect(0, 0, 256, 256); tx.fillStyle = 'rgba(231,217,193,.10)';
+  for (let y = 4; y < 256; y += 8) for (let x = 4; x < 256; x += 8) { tx.beginPath(); tx.arc(x, y, 1.4, 0, 7); tx.fill(); }
+  tx.strokeStyle = 'rgba(231,217,193,.25)'; tx.lineWidth = 3; tx.strokeRect(6, 6, 244, 244);
+  const tex = new THREE.CanvasTexture(tc); tex.colorSpace = THREE.SRGBColorSpace;
+  box(2.3, 0.012, 1.7, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, metalness: 0.2 }), 0, bedY + 0.031, 0);
+  for (const sx of [-1, 1]) {
+    box(0.14, PH, 0.14, dark, sx * PX, 0.14 + PH / 2, PZ);           // poste
+    box(0.02, PH - 0.3, 0.02, metal, sx * PX, 0.14 + PH / 2, PZ + 0.08); // guía lineal
+    const lead = cyl(0.018, PH - 0.4, metal, printer, 10); lead.position.set(sx * PX, 0.14 + PH / 2, PZ - 0.1);
+    box(0.24, 0.22, 0.24, grey, sx * PX, 0.25, PZ);                  // motor Z
+  }
+  box(2 * PX + 0.14, 0.1, 0.14, dark, 0, 0.14 + PH + 0.05, PZ);     // travesaño superior
+  // pórtico móvil
+  const gantry = new THREE.Group(); printer.add(gantry);
+  box(2 * PX, 0.09, 0.07, alu, 0, 0, PZ + 0.16, gantry);           // riel X
+  box(2 * PX - 0.1, 0.012, 0.012, metal, 0, 0.03, PZ + 0.2, gantry); // guía del riel
+  for (const sx of [-1, 1]) { box(0.26, 0.2, 0.22, dark, sx * PX, 0, PZ + 0.06, gantry); // carros Z
+    const pul = cyl(0.045, 0.04, metal, gantry); pul.rotation.x = Math.PI / 2; pul.position.set(sx * (PX - 0.2), 0, PZ + 0.215); }
+  const beltM = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+  box(2 * PX - 0.4, 0.012, 0.012, beltM, 0, 0.045, PZ + 0.215, gantry);
+  box(2 * PX - 0.4, 0.012, 0.012, beltM, 0, -0.045, PZ + 0.215, gantry);
 
-  // cama
-  const bedY = 0.55;
-  box(W - 0.5, 0.06, D - 0.6, metal, 0, bedY, 0);
-  box(W - 0.6, 0.015, D - 0.7, new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.4, metalness: 0.4 }), 0, bedY + 0.038, 0);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(0.04, bedY - 0.25, 0.04, metal, sx * 0.9, (bedY + 0.25) / 2, sz * 0.8);
-
-  // gantry core-XY: barras Y laterales y barra X móvil, cabezal
-  const railY = H - 0.2;
-  for (const sx of [-1, 1]) box(0.05, 0.05, D - 0.4, metal, sx * (W / 2 - 0.25), railY, 0);
-  const xbar = box(W - 0.5, 0.05, 0.05, metal, 0, railY, 0);
+  // --- Cabezal detallado (origen = punta de boquilla) ---
   const head = new THREE.Group(); printer.add(head);
-  const grey = new THREE.MeshStandardMaterial({ color: 0x4a4542, roughness: 0.5, metalness: 0.4 });
-  const hb = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.3), new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.45, metalness: 0.2 })); hb.castShadow = true; head.add(hb);
-  const shroud = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.03), grey); shroud.position.z = 0.165; head.add(shroud);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 32), new THREE.MeshStandardMaterial({ color: 0x7a7570, metalness: 0.7, roughness: 0.35 })); ring.position.z = 0.185; head.add(ring);
-  const blades = new THREE.Group(); blades.position.z = 0.18; head.add(blades);
-  const bladeM = new THREE.MeshStandardMaterial({ color: 0x2b2725, roughness: 0.6 });
-  for (let i = 0; i < 7; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.03, 0.006), bladeM); bl.position.x = 0.045; const piv = new THREE.Group(); piv.rotation.z = i * Math.PI * 2 / 7; bl.rotation.x = 0.4; piv.add(bl); blades.add(piv); }
-  for (const gy of [-0.05, 0, 0.05]) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.008, 0.008), grey); bar.position.set(0, gy, 0.19); head.add(bar); }
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 16), grey); hub.rotation.x = Math.PI / 2; hub.position.z = 0.19; head.add(hub);
-  const heater = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.12), new THREE.MeshStandardMaterial({ color: 0xb8b2aa, metalness: 0.8, roughness: 0.3 })); heater.position.y = -0.2; head.add(heater);
-  const noz = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.25 })); noz.rotation.x = Math.PI; noz.position.y = -0.27; head.add(noz);
-  // tubo/varilla vertical que conecta cabezal con la barra
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 8), metal); head.add(stem);
-
+  const noz = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.07, 16), brass); noz.rotation.x = Math.PI; noz.position.y = 0.035; head.add(noz);
+  const nozHex = cyl(0.04, 0.03, brass, head, 6); nozHex.position.y = 0.085;
+  box(0.16, 0.08, 0.13, metal, 0.02, 0.14, 0, head);                // bloque calentador
+  const cart = cyl(0.012, 0.1, metal, head, 8); cart.rotation.z = Math.PI / 2; cart.position.set(0.12, 0.14, 0.03);
+  const brk = cyl(0.018, 0.06, metal, head, 10); brk.position.y = 0.2;  // heatbreak
+  for (let i = 0; i < 6; i++) { const fin = cyl(0.06, 0.008, metal, head, 24); fin.position.y = 0.23 + i * 0.022; } // disipador
+  // carcasa con chaflanes
+  const hs = new THREE.Shape(); const w = 0.2, hh = 0.22, c = 0.06;
+  hs.moveTo(-w + c, -hh); hs.lineTo(w - c, -hh); hs.lineTo(w, -hh + c); hs.lineTo(w, hh - 0.02); hs.lineTo(w - 0.02, hh); hs.lineTo(-w + 0.02, hh); hs.lineTo(-w, hh - 0.02); hs.lineTo(-w, -hh + c); hs.closePath();
+  const hg = new THREE.ExtrudeGeometry(hs, { depth: 0.28, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.012, bevelSegments: 2 }); hg.translate(0, 0, -0.14);
+  const housing = new THREE.Mesh(hg, new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.42, metalness: 0.2 })); housing.position.y = 0.6; housing.castShadow = true; head.add(housing);
+  // ventilador frontal
+  const ff = new THREE.Group(); ff.position.set(0, 0.6, 0.16); head.add(ff);
+  const fr = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.27, 0.02), grey); ff.add(fr);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.012, 8, 40), metal); ring.position.z = 0.012; ff.add(ring);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.105, 40), blackPl); hole.position.z = 0.011; ff.add(hole);
+  const blades = new THREE.Group(); blades.position.z = 0.016; ff.add(blades);
+  const bladeM = new THREE.MeshStandardMaterial({ color: 0x3b3633, roughness: 0.55, side: THREE.DoubleSide });
+  for (let i = 0; i < 9; i++) { const piv = new THREE.Group(); piv.rotation.z = i * Math.PI * 2 / 9; const bl = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.028, 0.004), bladeM); bl.position.x = 0.058; bl.rotation.x = 0.5; piv.add(bl); blades.add(piv); }
+  const hub = cyl(0.03, 0.012, grey, ff, 20); hub.rotation.x = Math.PI / 2; hub.position.z = 0.024;
+  const hubLogo = new THREE.Mesh(new THREE.CircleGeometry(0.018, 20), new THREE.MeshStandardMaterial({ color: C.terracota })); hubLogo.position.z = 0.031; ff.add(hubLogo);
+  for (let i = -2; i <= 2; i++) { const g1 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.006, 0.006), metal); g1.position.set(0, i * 0.04, 0.034); ff.add(g1); }
+  for (const r of [0.05, 0.085]) { const gr = new THREE.Mesh(new THREE.TorusGeometry(r, 0.003, 6, 40), metal); gr.position.z = 0.034; ff.add(gr); }
+  // ventilador lateral de capa + ducto
+  const sf = new THREE.Group(); sf.position.set(0.25, 0.5, 0); head.add(sf);
+  box(0.08, 0.22, 0.22, grey, 0, 0, 0, sf);
+  const sring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.01, 8, 32), metal); sring.rotation.y = Math.PI / 2; sring.position.x = 0.045; sf.add(sring);
+  const sblades = new THREE.Group(); sblades.position.x = 0.045; sblades.rotation.y = Math.PI / 2; sf.add(sblades);
+  for (let i = 0; i < 7; i++) { const piv = new THREE.Group(); piv.rotation.z = i * Math.PI * 2 / 7; const bl = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.022, 0.004), bladeM); bl.position.x = 0.04; bl.rotation.x = 0.5; piv.add(bl); sblades.add(piv); }
+  const duct = box(0.06, 0.3, 0.12, grey, 0.24, 0.24, 0, head); duct.rotation.z = -0.35;
+  box(0.1, 0.035, 0.1, grey, 0.14, 0.075, 0, head).rotation.z = -0.2;   // salida del ducto
+  // LED discreto (sin luz real)
+  box(0.12, 0.012, 0.005, new THREE.MeshStandardMaterial({ color: C.jade, emissive: new THREE.Color(C.jade), emissiveIntensity: 0.7 }), 0, 0.4, 0.165, head);
+  // carro sobre el riel
+  box(0.34, 0.24, 0.05, alu, 0, 0.6, -0.2, head);
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) { const wh = cyl(0.028, 0.03, blackPl, head, 16); wh.rotation.x = Math.PI / 2; wh.position.set(sx * 0.12, 0.6 + sy * 0.09, -0.235); }
+  // tubo PTFE y cable con curva
+  const ptfe = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.8, 0), new THREE.Vector3(0, 1.1, 0), new THREE.Vector3(-0.15, 1.4, -0.15), new THREE.Vector3(-0.55, 1.6, -0.45)]), 40, 0.016, 10),
+    new THREE.MeshPhysicalMaterial({ color: 0xf4f1ea, roughness: 0.25, transmission: 0.2, transparent: true, opacity: 0.9 })); ptfe.castShadow = true; head.add(ptfe);
+  const fil = new THREE.Mesh(new THREE.TubeGeometry(ptfe.geometry.parameters.path, 40, 0.007, 6), new THREE.MeshStandardMaterial({ color: C.terracota })); head.add(fil);
+  box(0.06, 0.06, 0.06, grey, 0, 0.8, 0, head); // acople
+  const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.12, 0.8, -0.1), new THREE.Vector3(0.2, 1.05, -0.2), new THREE.Vector3(0.35, 1.25, -0.4), new THREE.Vector3(0.7, 1.35, -0.6)]), 40, 0.02, 8), blackPl); cable.castShadow = true; head.add(cable);
+  const GANTRY_OFF = 0.6; // altura del riel respecto a la punta
   // --- Arco extruido del isotipo: un mesh por path con el fill del propio SVG ---
   const data = new SVGLoader().parse(svgText);
   const parts = [];
@@ -108,8 +146,8 @@ export function createScene(canvas, { reduced }) {
     const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false);
     camera.aspect = w / h; const mobile = w / h < 0.9;
     camera.fov = mobile ? 42 : 30; camera.updateProjectionMatrix();
-    if (mobile) { printer.position.set(0, -0.2, 0); camera.position.set(0, 3.2, 11.5); camera.lookAt(0, 2.5, 0); }
-    else { printer.position.set(1.7, 0, 0); camera.position.set(-0.2, 2.6, 9.5); camera.lookAt(0.9, 1.4, 0); }
+    if (mobile) { printer.position.set(0, -0.2, 0); camera.position.set(0, 3.0, 14.5); camera.lookAt(0, 2.6, 0); }
+    else { printer.position.set(1.7, 0, 0); camera.position.set(-0.2, 2.8, 10.8); camera.lookAt(0.9, 1.75, 0); }
     floor.position.copy(printer.position);
   }
   window.addEventListener('resize', layout); layout();
@@ -124,14 +162,12 @@ export function createScene(canvas, { reduced }) {
     const phase = progress * 120 * Math.PI; // ~1 pasada por capa
     const u = 0.5 + 0.5 * Math.sin(phase);
     const idx = Math.min(xs.length - 1, Math.floor(u * xs.length));
-    const tx = done ? 0 : xs[idx], tz = done ? 0 : Math.cos(phase * 0.5) * 0.25;
+    const tx = done ? 0 : xs[idx];
     head.position.x += (tx - head.position.x) * Math.min(1, dt * 14);
-    head.position.z += (tz - head.position.z) * Math.min(1, dt * 14);
-    const targetY = done ? Math.min(railY - 0.25, archGroup.position.y + archH + 0.45) : archGroup.position.y + hNow + 0.31;
+    const targetY = done ? archGroup.position.y + archH + 0.35 : archGroup.position.y + hNow + 0.005;
     head.position.y += (targetY - head.position.y) * Math.min(1, dt * 12);
-    stem.scale.y = Math.max(0.01, railY - head.position.y - 0.18); stem.position.y = 0.18 + stem.scale.y / 2;
-    xbar.position.z = head.position.z;
-    if (!reduced) blades.rotation.z += dt * 18;
+    gantry.position.y = head.position.y + GANTRY_OFF;
+    if (!reduced) { blades.rotation.z += dt * 18; sblades.rotation.z += dt * (printing ? 25 : 4); }
     hot.position.set(0, archGroup.position.y + hNow, 0); hot.material.opacity = printing ? 0.35 : 0; hot.visible = false;
     // al final gira suave
     if (done && !reduced) spin += dt * 0.35; else if (!done) spin *= 0.9;
