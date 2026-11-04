@@ -93,10 +93,13 @@ if (reduced) {
   const lenis = new Lenis();
   lenis.on('scroll', ScrollTrigger.update);
   gsap.ticker.add(t => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);
-  window.__lenis = lenis;
+  window.__lenis = lenis; window.__navTok = 0;
   // menú: directo a cada sección (Lenis no interfiere con el pin del hero)
   document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { const id = a.getAttribute('href').slice(1), el = document.getElementById(id); if (!el) return; e.preventDefault();
-    const y = id === 'hero' ? 0 : pins[id] ? pins[id].end : el; lenis.scrollTo(y, { duration: 1.2 }); history.replaceState(null, '', '#' + id); }));
+    /* el fin del pin se lee al clic y se vuelve a leer al terminar (puede moverse por refresh/clon); se corrige exacto */
+    const tok = ++window.__navTok; const goal = () => id === 'hero' ? 0 : pins[id] ? pins[id].end : el;
+    const fix = (n = 0) => { if (tok !== window.__navTok) return; const y = goal(); if (typeof y !== 'number') return; if (Math.abs(lenis.scroll - y) >= 1) lenis.scrollTo(y, { immediate: true, force: true }); if (n < 3) requestAnimationFrame(() => requestAnimationFrame(() => fix(n + 1))); };
+    lenis.scrollTo(goal(), { duration: 1.2, force: true, lock: true, onComplete: () => fix() }); history.replaceState(null, '', '#' + id); }));
   const st = ScrollTrigger.create({
     trigger: '#hero', start: 'top top', end: () => '+=' + window.innerHeight * 3,
     pin: true, scrub: 0.6,

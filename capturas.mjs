@@ -26,7 +26,7 @@ for (const [name, vp, mobile] of [['escritorio', { width: 1440, height: 900 }, f
   if (!mobile) for (let i = 0; i < 30; i++) { await p.mouse.wheel(0, 120); await p.waitForTimeout(100); if (await p.evaluate(() => scrollY < 300)) break; } else { await go(p, cloneAbs); for (let i = 0; i < 20 && await p.evaluate(() => scrollY > 300); i++) await p.waitForTimeout(50); }
   await p.waitForTimeout(400); await p.screenshot({ path: `capturas/${name}_justo_tras_loop.png` });
   console.log(name, 'tras loop, scrollY', await p.evaluate(() => Math.round(scrollY)), 'capa', await p.evaluate(() => document.querySelector('#capa').textContent));
-  if (!mobile) for (const id of ids) { await go(p, 0); await p.waitForTimeout(300); await p.click(`.nav a[href="#${id}"]`); await p.waitForTimeout(2300);
+  if (!mobile) for (const id of ids) { await go(p, 0); await p.waitForTimeout(300); await p.click(`.nav a[href="#${id}"]`); await p.waitForTimeout(1500); await p.waitForFunction(() => !__lenis.isScrolling, null, { timeout: 15000 }); await p.waitForTimeout(600);
     console.log('menu', id, await p.evaluate(id => ({ y: Math.round(scrollY), pinEnd: Math.round(__pins[id].end) }), id)); }
   await p.close();
 }
