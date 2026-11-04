@@ -80,7 +80,7 @@ document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
 });
 
-const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, form, .canales, .split img' });
+const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, .dcol, form, .canales, .split img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
 const desp = createDespiece(document.querySelector('#despiece'), { reduced });
 // celular: el texto va arriba y abajo del escenario fijado (sin tapar el modelo); escritorio: a los costados
@@ -142,7 +142,7 @@ if (reduced) {
   // despiece: el escenario se fija 3 pantallas con scrub; el enlace del menú lleva al inicio de la sección
   const dst = ScrollTrigger.create({ trigger: '#personalizado .despiece', start: 'top top', end: () => '+=' + innerHeight * 3, pin: true, pinSpacing: true, scrub: 0.5, onUpdate: s => { desp.setProgress(s.progress); revealD(s.progress); }, onRefresh: s => { desp.setProgress(s.progress); revealD(s.progress); } });
   pins.personalizado = ScrollTrigger.create({ trigger: '#personalizado', start: 'top top', end: 'top top' });
-  window.__despiece = dst; window.__desp = desp;
+  window.__despiece = dst; window.__desp = desp; window.__floaters = floaters;
   mqD.addEventListener('change', () => { placeDCols(); revealD(dst.progress); ScrollTrigger.refresh(); });
   };
   // orden DOM: impresion → despiece → resto (ScrollTrigger calcula los pines en orden de creación)
