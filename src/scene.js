@@ -96,7 +96,7 @@ export function createScene(canvas, { reduced }) {
     const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false);
     camera.aspect = w / h; const mobile = w / h < 0.9;
     camera.fov = mobile ? 42 : 30; camera.updateProjectionMatrix();
-    if (mobile) { printer.position.set(0, -0.2, 0); camera.position.set(0, 2.2, 10.5); camera.lookAt(0, 1.0, 0); }
+    if (mobile) { printer.position.set(0, -0.2, 0); camera.position.set(0, 3.2, 11.5); camera.lookAt(0, 2.5, 0); }
     else { printer.position.set(1.7, 0, 0); camera.position.set(-0.2, 2.6, 9.5); camera.lookAt(0.9, 1.4, 0); }
     floor.position.copy(printer.position);
   }
