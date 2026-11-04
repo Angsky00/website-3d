@@ -168,5 +168,7 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
     renderer.render(scene, camera); addEventListener('resize', () => renderer.render(scene, camera));
     return { setProgress() {}, tick() {} };
   }
-  return { setProgress(v) { p = v; }, tick(t) { render(p, t); } };
+  // QA: círculos en pantalla de los objetos visibles (centro y radio aproximado en px)
+  const debugRects = () => objs.filter(o => o.visible && o.userData.a > 0.05).map(o => { v.copy(o.position).project(camera); const [, hh] = halfAt(o.userData.z), rad = o.userData.base * 0.5 / hh * H / 2; return { x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, rad, sec: o.userData.sec, lane: !!o.userData.lane, a: +o.userData.a.toFixed(2) }; });
+  return { setProgress(v) { p = v; }, tick(t) { render(p, t); }, debugRects };
 }

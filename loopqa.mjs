@@ -3,7 +3,7 @@ const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshad
 for (const [w, h, mob] of [[360, 780, true], [390, 844, true], [1280, 800, false]]) {
   const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1, isMobile: mob, hasTouch: mob });
   p.on('pageerror', e => console.log('ERR', e.message)); p.on('console', m => { if (m.type()==='error') console.log('CONSOLE', m.text()); });
-  await p.goto('http://localhost:4173/', { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
+  await p.goto((process.env.QA_URL || 'http://localhost:4173/website-3d/'), { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
   await p.screenshot({ path: `capturas/loop_${w}_0_scroll0.png` });
   const ca = await p.evaluate(() => document.querySelector('.hero-clone').getBoundingClientRect().top + scrollY);
   await p.evaluate(() => { window.__noLoop = true; });

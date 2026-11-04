@@ -13,6 +13,27 @@ export const content = {
     tarjetas: ['Refacciones', 'Prototipos y proyectos escolares', 'Regalos personalizados', 'Para negocios'],
     dato: 'Creality K1C · PLA · PETG · materiales técnicos',
   },
+  personalizado: { // Textos DEFINITIVOS de Marketing 3D
+    titulo: 'Si lo imaginas, lo fabricamos',
+    texto: 'Cada pieza se construye capa por capa desde un diseño digital. No hay moldes ni mínimos, así que una sola pieza puede ser única.',
+    bloques: [
+      { titulo: 'Hecho a tu medida', lista: [
+        ['Medida exacta', 'piezas que encajan justo donde las necesitas.'],
+        ['Tu nombre o tu foto', 'llaveros, letreros y litofanías que muestran tu foto a contraluz.'],
+        ['Piezas únicas', 'regalos, trofeos y prototipos de una sola unidad.'],
+        ['Refacciones', 'perillas, clips, engranes y tapas que ya no se consiguen.'],
+      ] },
+      { titulo: 'Más que plástico', lista: [
+        ['Madera', 'bases, cajas y letreros con piezas impresas encajadas.'],
+        ['Resina', 'acabado liso y brillante, o piezas con incrustaciones.'],
+        ['Tela', 'hebillas, broches y piezas para bordado e hipiles.'],
+        ['Metal', 'insertos roscados, imanes y tornillería para armar y desarmar.'],
+        ['Electrónica', 'carcasas a medida para lámparas LED, sensores y proyectos con Arduino.'],
+      ] },
+    ],
+    cierre: 'Plástico, madera, metal y luz en una misma pieza.',
+    boton: 'Cotiza tu idea',
+  },
   carpinteria: { // PROVISIONAL: contenido pendiente del usuario
     titulo: 'Carpintería',
     texto: 'Piezas en madera hechas a mano, que combinamos con impresión 3D cuando el diseño lo pide.',
