@@ -111,10 +111,10 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
   const v = new THREE.Vector3();
   function fade(o, rects, instant) {
     v.copy(o.position).project(camera);
-    const sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H, [, hh] = halfAt(o.userData.z), rad = o.userData.base * 0.75 / hh * H / 2 + 10;
+    const sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H, [, hh] = halfAt(o.userData.z), rad = o.userData.base * 0.8 / hh * H / 2 + 36; // margen amplio: se va antes de llegar
     const hit = rects.some(r => sx + rad > r.left && sx - rad < r.right && sy + rad > r.top && sy - rad < r.bottom);
-    const target = hit ? 0.08 : 1; o.userData.a = instant ? target : o.userData.a + (target - o.userData.a) * 0.2;
-    o.visible = o.userData.a > 0.02;
+    const target = hit ? 0 : 1; o.userData.a = instant ? target : o.userData.a + (target - o.userData.a) * 0.3; if (o.userData.a < 0.03) o.userData.a = 0;
+    o.visible = o.userData.a > 0;
     o.traverse(m => { if (m.material) { m.material.opacity = o.userData.a; m.material.depthWrite = o.userData.a > 0.9; } });
   }
   const els = avoid ? [...document.querySelectorAll(avoid)] : [];

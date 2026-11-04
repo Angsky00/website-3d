@@ -68,13 +68,17 @@ document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
 });
 
-const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, form, .canales, .split img' });
+const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, form, .canales, .split img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
 const capa = document.querySelector('#capa');
 const final = document.querySelector('.hero-final');
 const copy = document.querySelector('.hero-copy');
 
 if (reduced) {
+  // reduced-motion: los objetos quietos solo existen dentro del hero; fuera de él el canvas se recorta por completo
+  const fc = document.querySelector('#floaters'), hero = document.querySelector('#hero');
+  const clip = () => { const b = Math.max(0, hero.getBoundingClientRect().bottom); fc.style.clipPath = `inset(0 0 ${Math.max(0, innerHeight - b)}px 0)`; fc.style.visibility = b <= 0 ? 'hidden' : 'visible'; };
+  clip(); addEventListener('scroll', clip, { passive: true }); addEventListener('resize', clip);
   scene.setProgress(1); capa.textContent = 120; // el texto de cierre no se muestra: el hero ya ocupa ese espacio
 } else {
   const lenis = new Lenis();
