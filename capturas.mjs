@@ -12,9 +12,9 @@ for (const [name, vp, mobile] of [['escritorio', { width: 1440, height: 900 }, f
     await p.waitForTimeout(2500);
     await p.screenshot({ path: `capturas/${name}_${tag}.png` });
   }
-  const extras = name === 'escritorio' ? [['extra_impresion', '#impresion'], ['extra_contacto', '#contacto']] : [['extra_carpinteria', '#carpinteria']];
-  for (const [tag, sel] of extras) {
-    const y = await p.evaluate(s => document.querySelector(s).getBoundingClientRect().top + scrollY, sel);
+  const extras = name === 'escritorio' ? [['extra_impresion', '#impresion'], ['extra_contacto', '#contacto']] : [['extra_carpinteria', '#carpinteria'], ['extra_impresion', '#impresion'], ['extra_impresion_b', '#impresion', 400], ['extra_artesanias', '#artesanias'], ['extra_nosotros', '#nosotros'], ['extra_contacto', '#contacto'], ['extra_contacto_b', '#contacto', 350]];
+  for (const [tag, sel, dy = 0] of extras) {
+    const y = dy + await p.evaluate(s => document.querySelector(s).getBoundingClientRect().top + scrollY, sel);
     await p.evaluate(y => { __lenis.scrollTo(y, { immediate: true }); }, y); await p.waitForTimeout(2500);
     await p.screenshot({ path: `capturas/${name}_${tag}.png` });
   }
