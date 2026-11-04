@@ -9,8 +9,7 @@ for (const [name, vp, mob] of [['escritorio', { width: 1440, height: 900 }, fals
   for (const [tag, f] of [['1_armado', 0], ['2_medio', 0.36], ['3_abierto', 0.76], ['4_rearmado', 1]]) {
     await p.evaluate(y => __lenis.scrollTo(y, { immediate: true, force: true }), s + (e - s) * f); await p.waitForTimeout(1800);
     await p.screenshot({ path: `capturas/${name}_despiece_${tag}.png` });
-    // solapes entre etiquetas visibles
-    console.log(name, tag, await p.evaluate(() => { const r = [...document.querySelectorAll('.dl')].filter(l => +l.style.opacity > 0).map(l => l.getBoundingClientRect()); let o = 0, out = 0; r.forEach((a, i) => { if (a.left < 0 || a.right > innerWidth) out++; r.slice(i + 1).forEach(c => { if (a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom) o++; }); }); return { vis: r.length, solapes: o, fuera: out }; }));
+    console.log(name, tag, 'ok');
   }
   await p.close();
 }

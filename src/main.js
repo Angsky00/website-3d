@@ -44,16 +44,12 @@ document.querySelector('#app').innerHTML = `
   <section id="personalizado" class="s perso"><div class="wrap">
     <span class="eyebrow">02 · Posibilidades</span><h2 class="reveal">${c.personalizado.titulo}</h2>
     <p class="lead reveal">${c.personalizado.texto}</p>
-    <div class="bloques">${c.personalizado.bloques.map(b=>`<article class="bloque reveal"><h3>${b.titulo}</h3><p>${b.texto}</p>${b.lista?`<ul>${b.lista.map(([m,t])=>`<li><b>${m}:</b> ${t}</li>`).join('')}</ul>`:''}</article>`).join('')}</div>
+    <div class="bloques">${c.personalizado.bloques.map(b=>`<article class="bloque reveal"><h3>${b.titulo}</h3>${b.texto?`<p>${b.texto}</p>`:''}${b.lista?`<ul>${b.lista.map(([m,t])=>`<li><b>${m}:</b> ${t}</li>`).join('')}</ul>`:''}</article>`).join('')}</div>
     <p class="cierre reveal">${c.personalizado.cierre}</p>
     <a class="btn" href="#contacto">${c.personalizado.boton} <span aria-hidden="true">→</span></a>
   </div>
   <div class="despiece">
-    <canvas id="despiece" role="img" aria-label="Animación: las piezas del extrusor de la impresora se separan una a una en diagonal y se vuelven a armar: ${c.despiece.piezas.map(p=>p[0].toLowerCase()).join(', ')}"></canvas>
-    <div class="dlabels" aria-hidden="true"></div>
-    <div class="dui"><span class="eyebrow">${c.despiece.eyebrow}</span><h3 class="dtitle">${c.despiece.titulo}</h3>
-      <div class="dstep" aria-live="off"><span class="dnum">000 / ${String(c.despiece.piezas.length).padStart(3,'0')}</span><b class="dname">Armado</b><span class="ddesc">Desliza para separar las piezas.</span></div></div>
-    <div class="dside"><p>${c.despiece.texto}</p><a href="#contacto">Cotiza tu idea</a></div>
+    <canvas id="despiece" role="img" aria-label="Animación: las piezas del extrusor de la impresora se separan una a una en diagonal y se vuelven a armar"></canvas>
   </div></section>
   <section id="carpinteria" class="s alt"><div class="wrap">
     <span class="eyebrow">03 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>
@@ -90,7 +86,7 @@ document.querySelector('form').addEventListener('submit', e => {
 
 const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, form, .canales, .split img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
-const desp = createDespiece(document.querySelector('#despiece'), document.querySelector('.dlabels'), { reduced, piezas: c.despiece.piezas, ui: document.querySelector('.dstep') });
+const desp = createDespiece(document.querySelector('#despiece'), { reduced });
 const capa = document.querySelector('#capa');
 const final = document.querySelector('.hero-final');
 const copy = document.querySelector('.hero-copy');

@@ -1,11 +1,11 @@
-// Despiece del extrusor (procedural, sin descargas). Inspirado en despieces editoriales: eje diagonal (escritorio) / vertical (celular),
+// Despiece del extrusor (procedural, sin descargas). Puramente visual (sin rótulos). Inspirado en despieces editoriales: eje diagonal (escritorio) / vertical (celular),
 // vista 3/4, materiales PBR y luz de estudio. setProgress(p): 0 armado → piezas se separan una a una → p≥0.82 se rearma.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-export function createDespiece(canvas, labelsEl, { reduced, piezas, ui }) {
+export function createDespiece(canvas, { reduced }) {
   const C = { terracota: css('--terracota'), jade: css('--jade'), arena: css('--arena'), carbon: css('--carbon'), crema: css('--crema') };
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -52,13 +52,8 @@ export function createDespiece(canvas, labelsEl, { reduced, piezas, ui }) {
   add(g => { mk(cyl(0.05, 0.3, 16), M.hot, g, 0, 0.2); mk(cyl(0.16, 0.14, 6), M.hot, g, 0, 0); mk(new THREE.ConeGeometry(0.12, 0.22, 24), M.hot, g, 0, -0.18, 0, Math.PI); }, [0, -1.0, 0], [0, -4.1, 0]); // boquilla
   const N = parts.length, glow = new Map(); // activa: realce sutil (emisivo crema) sobre su propio material
   const hi = m => { if (!glow.has(m)) { const h = m.clone(); h.emissive = new THREE.Color(C.crema); h.emissiveIntensity = 0.22; glow.set(m, h); } return glow.get(m); };
-  labelsEl.innerHTML = parts.map((p, i) => `<span class="dl"><b>${String(i + 1).padStart(2, '0')}</b>${piezas[i][0]}</span>`).join('');
-  const labels = [...labelsEl.children];
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'dlines'); labelsEl.prepend(svg);
-  const lines = parts.map(() => { const l = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); svg.append(l); return l; });
-  const uNum = ui.querySelector('.dnum'), uName = ui.querySelector('.dname'), uDesc = ui.querySelector('.ddesc');
-  let W = 1, H = 1, mobile = false, last = -1, ready = false, cur = reduced ? 0.76 : 0, lastStep = null;
-  const v = new THREE.Vector3(), axS = new THREE.Vector2();
+  let W = 1, H = 1, mobile = false, last = -1, ready = false, cur = reduced ? 0.76 : 0;
+  const v = new THREE.Vector3();
   function place(s) { parts.forEach(q => { q.g.position.lerpVectors(q.home, q.open, s); }); }
   function layout() {
     const r = canvas.getBoundingClientRect(); W = r.width || 1; H = r.height || 1; mobile = W < 820;
@@ -68,14 +63,19 @@ export function createDespiece(canvas, labelsEl, { reduced, piezas, ui }) {
     const box = new THREE.Box3().setFromObject(tilt), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     // área útil: escritorio deja libre la columna de texto izquierda; celular deja título arriba y ficha abajo
-    const fw = mobile ? 0.86 : 0.5, fh = mobile ? 0.6 : 0.92;
+    const fw = mobile ? 0.86 : 0.55, fh = mobile ? 0.8 : 0.78;
     const d = Math.max(sz.y / fh / 2 / t, sz.x / fw / 2 / (t * camera.aspect)) + sz.z / 2;
-    const sx = 0, sy = mobile ? 0.02 * H : 0; // desplazamiento en pantalla del conjunto (px)
+    const sx = 0, sy = 0; // desplazamiento en pantalla del conjunto (px)
     const wpp = 2 * d * t / H; // unidades por px a la distancia d
     camera.position.set(c.x - sx * wpp, c.y + sy * wpp, c.z + d); camera.lookAt(camera.position.x, camera.position.y, c.z); camera.updateProjectionMatrix();
+    // centrado real en pantalla: proyecta las esquinas de la caja abierta y corrige el desfase de perspectiva
+    camera.updateMatrixWorld(); const pr = { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 };
+    for (let k = 0; k < 8; k++) { v.set(k & 1 ? box.max.x : box.min.x, k & 2 ? box.max.y : box.min.y, k & 4 ? box.max.z : box.min.z).project(camera);
+      pr.x0 = Math.min(pr.x0, v.x); pr.x1 = Math.max(pr.x1, v.x); pr.y0 = Math.min(pr.y0, v.y); pr.y1 = Math.max(pr.y1, v.y); }
+    if (!mobile) { const ox = (pr.x0 + pr.x1) / 2 * W / 2, oy = (pr.y0 + pr.y1) / 2 * H / 2; camera.position.x += ox * wpp; camera.position.y += oy * wpp; camera.lookAt(camera.position.x, camera.position.y, c.z); camera.updateProjectionMatrix(); }
     ready = true; last = -1; draw(cur);
   }
-  const sm = t => t * t * (3 - 2 * t), cl = (a, b, x) => Math.min(b, Math.max(a, x)), pad = n => String(n).padStart(3, '0');
+  const sm = t => t * t * (3 - 2 * t), cl = (a, b, x) => Math.min(b, Math.max(a, x));
   function draw(p) {
     if (!ready) return;
     // separación: 0.04–0.70 una por una; 0.70–0.82 abierto; 0.82–0.98 rearmado
@@ -89,35 +89,6 @@ export function createDespiece(canvas, labelsEl, { reduced, piezas, ui }) {
     if (!reduced && p > 0.82 && p < 0.98) active = N - 1 - Math.min(N - 1, Math.floor((p - 0.82) / 0.16 * N));
     parts.forEach((q, i) => q.meshes.forEach(([o, m]) => { o.material = i === active && m !== M.fil ? hi(m) : m; }));
     scene.updateMatrixWorld(); renderer.render(scene, camera);
-    // ficha: contador NN / 10 + nombre y descripción de la pieza activa
-    const step = active >= 0 ? active : p >= 0.70 && p <= 0.82 || reduced ? 'open' : p > 0.82 ? 'done' : 'start';
-    if (step !== lastStep) { lastStep = step;
-      if (typeof step === 'number') { uNum.textContent = `${pad(step + 1)} / ${pad(N)}`; uName.textContent = piezas[step][0]; uDesc.textContent = piezas[step][1]; uName.classList.add('on'); }
-      else { uName.classList.remove('on'); uNum.textContent = `${step === 'start' ? '00' : pad(N)} / ${pad(N)}`; uName.textContent = step === 'open' ? 'Despiece completo' : 'Armado'; uDesc.textContent = step === 'open' ? `${N} piezas trabajando juntas.` : 'Desliza para separar las piezas.'; } }
-    // rótulos: la activa destacada (terracota), las demás tenues; lado alternado izq/der respecto al eje, con línea guía
-    tiltZ.updateMatrixWorld(); const ax = new THREE.Vector3(0, 1, 0).applyQuaternion(tilt.getWorldQuaternion(new THREE.Quaternion())); axS.set(ax.x, -ax.y).normalize();
-    const nrm = new THREE.Vector2(-axS.y, axS.x); // perpendicular en pantalla
-    const L = [];
-    parts.forEach((q, i) => {
-      const el = labels[i]; q.g.getWorldPosition(v).project(camera);
-      const px = (v.x + 1) / 2 * W, py = (1 - v.y) / 2 * H, on = i === active;
-      const show = on; // solo la pieza activa lleva rótulo
-      el.classList.toggle('on', on); el.style.opacity = show ? (on ? 1 : 0.45) : 0;
-      const side = 1, dist = mobile ? 0 : 110, w = el.offsetWidth, h = el.offsetHeight;
-      let lx, ly;
-      if (mobile) { const right = px < W / 2; lx = right ? W - 12 - w : 12; ly = py - h / 2; }
-      else { const tx = px + nrm.x * side * dist, ty = py + nrm.y * side * dist; lx = tx + (nrm.x * side >= 0 ? 0 : -w); ly = ty - h / 2; }
-      L.push({ el, i, px, py, lx, ly, w, h, show, on });
-    });
-    const vis = L.filter(l => l.show).sort((a, b) => a.ly - b.ly);
-    vis.forEach((l, k) => { for (let j = 0; j < k; j++) { const o = vis[j]; if (l.lx < o.lx + o.w + 4 && o.lx < l.lx + l.w + 4 && l.ly < o.ly + o.h + 4) l.ly = o.ly + o.h + 4; } });
-    L.forEach(l => {
-      l.lx = Math.max(6, Math.min(W - 6 - l.w, l.lx)); l.ly = Math.max(6, Math.min(H - l.h - 6, l.ly));
-      l.el.style.transform = `translate(${l.lx}px,${l.ly}px)`;
-      const ex = l.lx + (l.px > l.lx + l.w / 2 ? l.w : 0), ey = l.ly + l.h / 2, ln = lines[l.i];
-      if (![ex, ey, l.px, l.py].every(Number.isFinite)) return;
-      ln.setAttribute('points', `${ex},${ey} ${l.px},${l.py}`); ln.style.opacity = l.show ? (l.on ? 1 : 0.6) : 0; ln.classList.toggle('on', l.on);
-    });
   }
   addEventListener('resize', layout); requestAnimationFrame(layout);
   return { setProgress(p) { cur = p; if (Math.abs(p - last) > 1e-4) { last = p; draw(p); } }, layout };
