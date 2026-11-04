@@ -153,7 +153,7 @@ export function createScene(canvas, { reduced }) {
   const gemSpec = [[-0.4, 4.6, -4, 0.5, 0], [4.8, 4.2, -4, 0.9, 1], [5.6, 0.9, -2, 0.42, 0], [-1.2, -0.6, -3, 0.35, 2], [7.5, 2.6, -6, 0.6, 2]];
   for (const [x, y, z, r, ci] of gemSpec) {
     const g = new THREE.Mesh(new THREE.IcosahedronGeometry(r, ci === 1 ? 1 : 0), new THREE.MeshStandardMaterial({ color: pal[ci], flatShading: true, roughness: 0.5, metalness: 0.1, emissive: pal[ci], emissiveIntensity: 0.12 }));
-    g.position.set(x, y, z); g.userData = { y, sp: 0.2 + Math.random() * 0.3, ph: Math.random() * 6 }; fx.add(g); gems.push(g);
+    g.position.set(x, y, z); g.userData = { y, y0: y, x, z, r, sp: 0.2 + Math.random() * 0.3, ph: Math.random() * 6 }; fx.add(g); gems.push(g);
   }
   // confeti triangular (InstancedMesh, un solo draw call)
   const NT = lite ? 90 : 260;
@@ -204,6 +204,11 @@ export function createScene(canvas, { reduced }) {
     else { printer.position.set(1.7, 0, 0); camBase.set(-0.2, 2.8, 10.8); camTarget.set(0.9, 1.75, 0); }
     placeCamera(0);
     floor.position.copy(printer.position);
+    // móvil: solo 2 gemas pequeñas en la franja libre bajo la impresora (ni tras la tarjeta ni tras la impresora)
+    const mob = [[-1.9, -1.7, -0.5, 0.28], [2.0, -1.45, -1.2, 0.34]];
+    gems.forEach((g, i) => { const u = g.userData, m = mob[i];
+      if (mobile) { g.visible = !!m; if (m) { g.position.set(m[0], m[1], m[2]); u.y = m[1]; g.scale.setScalar(m[3] / u.r); } }
+      else { g.visible = true; g.position.set(u.x, u.y = u.y0, u.z); g.scale.setScalar(1); } });
   }
   // cámara por tramos: orbita de -14° a +10° y dolly hacia dentro a mitad de impresión
   const off = new THREE.Vector3();
@@ -242,7 +247,8 @@ export function createScene(canvas, { reduced }) {
     mouse.sx += (mouse.x - mouse.sx) * Math.min(1, dt * 3); mouse.sy += (mouse.y - mouse.sy) * Math.min(1, dt * 3);
     placeCamera(t);
     for (const g of gems) { const u = g.userData; g.rotation.x = t * u.sp + u.ph; g.rotation.y = t * u.sp * 0.7; g.position.y = u.y + (reduced ? 0 : Math.sin(t * 0.6 + u.ph) * 0.15); }
-    fx.position.x = -mouse.sx * 0.35; fx.position.y = mouse.sy * 0.2;
+    fx.position.x = -mouse.sx * 0.35; // sin efecto en táctil (mouse=0)
+    fx.position.y = mouse.sy * 0.2;
     for (let i = 0; i < NT; i++) { const d = tdata[i]; if (!reduced) { d.y += d.v * dt; if (d.y > 7) d.y = -1; }
       e3.set(d.r + t * d.v * 3, d.r * 2 + t * d.v * 2, d.r); q.setFromEuler(e3); m4.compose(v3.set(d.x, d.y, d.z), q, one.setScalar(d.sc)); conf.setMatrixAt(i, m4); }
     conf.instanceMatrix.needsUpdate = true;

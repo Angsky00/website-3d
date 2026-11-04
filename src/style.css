@@ -65,3 +65,5 @@ footer{background:var(--carbon);color:var(--arena);text-align:center;padding:2re
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}}
 .card:hover{transform:translateY(-6px);box-shadow:0 14px 34px rgb(31 27 24 /.12)}
 @media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+#impresion{background:linear-gradient(to bottom,var(--carbon) 0,#4a3a30 3rem,#a8927a 7rem,var(--arena) 11rem);padding-top:calc(clamp(4rem,10vw,7rem) + 8rem)}
+#hero{box-shadow:none}
