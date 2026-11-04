@@ -40,7 +40,7 @@ export function createScene(canvas, { reduced }) {
   glass.position.set(0, H / 2 + 0.04, D / 2 - 0.02); printer.add(glass);
   box(0.05, 0.6, 0.06, metal, W / 2 - 0.35, H / 2, D / 2 + 0.02); // manija
   // luz interior
-  const inner = new THREE.PointLight(0xfff1dc, 3, 4, 1.5); inner.position.set(0, H - 0.4, 0.3); printer.add(inner);
+  const inner = new THREE.PointLight(0xfff1dc, 2.5, 4, 1.5); inner.position.set(0, H - 0.3, 0.9); printer.add(inner);
 
   // cama
   const bedY = 0.55;
@@ -49,32 +49,44 @@ export function createScene(canvas, { reduced }) {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(0.04, bedY - 0.25, 0.04, metal, sx * 0.9, (bedY + 0.25) / 2, sz * 0.8);
 
   // gantry core-XY: barras Y laterales y barra X móvil, cabezal
-  const railY = H - 0.45;
+  const railY = H - 0.2;
   for (const sx of [-1, 1]) box(0.05, 0.05, D - 0.4, metal, sx * (W / 2 - 0.25), railY, 0);
   const xbar = box(W - 0.5, 0.05, 0.05, metal, 0, railY, 0);
   const head = new THREE.Group(); printer.add(head);
-  const hb = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.36, 0.3), new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.4 })); hb.castShadow = true; head.add(hb);
-  const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 24), new THREE.MeshStandardMaterial({ color: C.terracota })); fan.rotation.x = Math.PI / 2; fan.position.z = 0.16; head.add(fan);
-  const noz = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.25 })); noz.rotation.x = Math.PI; noz.position.y = -0.24; head.add(noz);
-  const glow = new THREE.PointLight(new THREE.Color(C.terracota), 0, 0.8); glow.position.y = -0.3; head.add(glow);
+  const grey = new THREE.MeshStandardMaterial({ color: 0x4a4542, roughness: 0.5, metalness: 0.4 });
+  const hb = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.3), new THREE.MeshStandardMaterial({ color: C.carbon, roughness: 0.45, metalness: 0.2 })); hb.castShadow = true; head.add(hb);
+  const shroud = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.03), grey); shroud.position.z = 0.165; head.add(shroud);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 32), new THREE.MeshStandardMaterial({ color: 0x7a7570, metalness: 0.7, roughness: 0.35 })); ring.position.z = 0.185; head.add(ring);
+  const blades = new THREE.Group(); blades.position.z = 0.18; head.add(blades);
+  const bladeM = new THREE.MeshStandardMaterial({ color: 0x2b2725, roughness: 0.6 });
+  for (let i = 0; i < 7; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.03, 0.006), bladeM); bl.position.x = 0.045; const piv = new THREE.Group(); piv.rotation.z = i * Math.PI * 2 / 7; bl.rotation.x = 0.4; piv.add(bl); blades.add(piv); }
+  for (const gy of [-0.05, 0, 0.05]) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.008, 0.008), grey); bar.position.set(0, gy, 0.19); head.add(bar); }
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 16), grey); hub.rotation.x = Math.PI / 2; hub.position.z = 0.19; head.add(hub);
+  const heater = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.12), new THREE.MeshStandardMaterial({ color: 0xb8b2aa, metalness: 0.8, roughness: 0.3 })); heater.position.y = -0.2; head.add(heater);
+  const noz = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.25 })); noz.rotation.x = Math.PI; noz.position.y = -0.27; head.add(noz);
   // tubo/varilla vertical que conecta cabezal con la barra
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 8), metal); head.add(stem);
 
-  // --- Arco extruido del isotipo ---
+  // --- Arco extruido del isotipo: un mesh por path con el fill del propio SVG ---
   const data = new SVGLoader().parse(svgText);
-  const shapes = [];
-  data.paths.forEach(p => { const fill = p.userData.style.fill; if (fill && fill !== 'none') SVGLoader.createShapes(p).forEach(s => shapes.push(s)); });
-  const geo = new THREE.ExtrudeGeometry(shapes, { depth: 40, bevelEnabled: true, bevelThickness: 2, bevelSize: 1.2, bevelSegments: 2, curveSegments: 6 });
-  geo.scale(1, -1, 1); geo.computeBoundingBox();
-  const bb = geo.boundingBox; geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
-  const s = 1.55 / (bb.max.x - bb.min.x); geo.scale(s, s, s); geo.computeVertexNormals(); geo.computeBoundingBox();
-  const archH = geo.boundingBox.max.y, archW = geo.boundingBox.max.x;
+  const parts = [];
+  data.paths.forEach(p => { const fill = p.userData.style.fill; if (fill && fill !== 'none') parts.push({ fill, shapes: SVGLoader.createShapes(p) }); });
+  const shapes = parts.flatMap(p => p.shapes);
+  const opts = { depth: 40, bevelEnabled: true, bevelThickness: 2, bevelSize: 1.0, bevelSegments: 2, curveSegments: 6 };
+  const geos = parts.map(p => { const g = new THREE.ExtrudeGeometry(p.shapes, opts); g.scale(1, -1, 1); return g; });
+  const bb = new THREE.Box3(); geos.forEach(g => { g.computeBoundingBox(); bb.union(g.boundingBox); });
+  const s = 1.9 / (bb.max.x - bb.min.x); // ~23 % más grande que antes (1.55)
+  const archH = (bb.max.y - bb.min.y) * s, archW = (bb.max.x - bb.min.x) * s / 2;
   const clip = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
-  const filament = new THREE.MeshStandardMaterial({ color: C.terracota, roughness: 0.55, metalness: 0.05, clippingPlanes: [clip], side: THREE.DoubleSide });
-  const arch = new THREE.Mesh(geo, filament); arch.castShadow = true;
-  const archGroup = new THREE.Group(); archGroup.position.set(0, bedY + 0.046, 0); archGroup.add(arch); printer.add(archGroup);
+  const archGroup = new THREE.Group(); archGroup.position.set(0, bedY + 0.046, 0); printer.add(archGroup);
+  const arch = new THREE.Group(); archGroup.add(arch);
+  geos.forEach((g, i) => {
+    g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2); g.scale(s, s, s); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: new THREE.Color(parts[i].fill), roughness: 0.55, metalness: 0.05, clippingPlanes: [clip], side: THREE.DoubleSide }));
+    m.castShadow = true; arch.add(m);
+  });
   // capa "caliente" en el borde de impresión
-  const hot = new THREE.Mesh(new THREE.PlaneGeometry(archW * 2.2, 0.62 * s * 40 + 0.1), new THREE.MeshBasicMaterial({ color: 0xffb08a, transparent: true, opacity: 0, depthWrite: false }));
+  const hot = new THREE.Mesh(new THREE.PlaneGeometry(archW * 2.2, 1), new THREE.MeshBasicMaterial({ color: 0xffb08a, transparent: true, opacity: 0, depthWrite: false }));
   hot.rotation.x = -Math.PI / 2; printer.add(hot);
   const groundY = 0;
   const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 48), new THREE.ShadowMaterial({ opacity: 0.18 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
@@ -115,11 +127,11 @@ export function createScene(canvas, { reduced }) {
     const tx = done ? 0 : xs[idx], tz = done ? 0 : Math.cos(phase * 0.5) * 0.25;
     head.position.x += (tx - head.position.x) * Math.min(1, dt * 14);
     head.position.z += (tz - head.position.z) * Math.min(1, dt * 14);
-    const targetY = done ? archH + 0.8 + archGroup.position.y : archGroup.position.y + hNow + 0.3;
+    const targetY = done ? Math.min(railY - 0.25, archGroup.position.y + archH + 0.45) : archGroup.position.y + hNow + 0.31;
     head.position.y += (targetY - head.position.y) * Math.min(1, dt * 12);
     stem.scale.y = Math.max(0.01, railY - head.position.y - 0.18); stem.position.y = 0.18 + stem.scale.y / 2;
     xbar.position.z = head.position.z;
-    glow.intensity = printing ? 2.5 : 0;
+    if (!reduced) blades.rotation.z += dt * 18;
     hot.position.set(0, archGroup.position.y + hNow, 0); hot.material.opacity = printing ? 0.35 : 0; hot.visible = false;
     // al final gira suave
     if (done && !reduced) spin += dt * 0.35; else if (!done) spin *= 0.9;

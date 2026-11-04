@@ -71,7 +71,7 @@ const final = document.querySelector('.hero-final');
 const copy = document.querySelector('.hero-copy');
 
 if (reduced) {
-  scene.setProgress(1); capa.textContent = 120; final.style.opacity = 1;
+  scene.setProgress(1); capa.textContent = 120; // el texto de cierre no se muestra: el hero ya ocupa ese espacio
 } else {
   const lenis = new Lenis();
   lenis.on('scroll', ScrollTrigger.update);
