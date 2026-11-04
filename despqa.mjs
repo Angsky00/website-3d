@@ -9,7 +9,14 @@ for (const [name, vp, mob] of [['escritorio', { width: 1440, height: 900 }, fals
   for (const [tag, f] of [['1_armado', 0], ['2_medio', 0.36], ['3_abierto', 0.76], ['4_rearmado', 1]]) {
     await p.evaluate(y => __lenis.scrollTo(y, { immediate: true, force: true }), s + (e - s) * f); await p.waitForTimeout(1800);
     await p.screenshot({ path: `capturas/${name}_despiece_${tag}.png` });
-    console.log(name, tag, 'ok');
+    const r = await p.evaluate(() => { const st = document.querySelector('.despiece').getBoundingClientRect(), m = __desp.bounds();
+      const M = { l: st.left + m.l, r: st.left + m.r, t: st.top + m.t, b: st.top + m.b };
+      const cols = [...document.querySelectorAll('.dcol')].map(c => c.getBoundingClientRect()).filter(c => c.bottom > 0 && c.top < innerHeight);
+      const sol = cols.filter(c => c.left < M.r && M.l < c.right && c.top < M.b && M.t < c.bottom).length;
+      const op = [...document.querySelectorAll('.dcol .ri')].map(e => +getComputedStyle(e).opacity);
+      return { solapeTextoModelo: sol, legibles: op.filter(o => o > 0.99).length + '/' + op.length, fuera: M.l < -2 || M.r > innerWidth + 2 }; });
+    const bad = r.solapeTextoModelo > 0 || r.fuera || (tag === '3_abierto' && r.legibles.split('/')[0] !== r.legibles.split('/')[1]);
+    if (bad) errs.push(`${name} ${tag} layout`); console.log(name, tag, r, bad ? 'FALLA' : 'OK');
   }
   await p.close();
 }

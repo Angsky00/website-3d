@@ -63,16 +63,24 @@ export function createDespiece(canvas, { reduced }) {
     const box = new THREE.Box3().setFromObject(tilt), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     // área útil: escritorio deja libre la columna de texto izquierda; celular deja título arriba y ficha abajo
-    const fw = mobile ? 0.86 : 0.55, fh = mobile ? 0.8 : 0.78;
+    // escritorio: el modelo llena el hueco entre las columnas de texto (medidas reales)
+    let fw = 0.86, fh = 0.8, gapC = W / 2;
+    if (!mobile) { const st = canvas.parentElement.getBoundingClientRect(), cl = canvas.parentElement.querySelector('.dl-l'), cr = canvas.parentElement.querySelector('.dl-r');
+      const a = cl ? cl.getBoundingClientRect().right - st.left + 24 : 0.25 * W, b = cr ? cr.getBoundingClientRect().left - st.left - 24 : 0.75 * W;
+      fw = Math.max(0.3, (b - a) / W); fh = 0.86; gapC = (a + b) / 2; }
     const d = Math.max(sz.y / fh / 2 / t, sz.x / fw / 2 / (t * camera.aspect)) + sz.z / 2;
     const sx = 0, sy = 0; // desplazamiento en pantalla del conjunto (px)
     const wpp = 2 * d * t / H; // unidades por px a la distancia d
     camera.position.set(c.x - sx * wpp, c.y + sy * wpp, c.z + d); camera.lookAt(camera.position.x, camera.position.y, c.z); camera.updateProjectionMatrix();
-    // centrado real en pantalla: proyecta las esquinas de la caja abierta y corrige el desfase de perspectiva
-    camera.updateMatrixWorld(); const pr = { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 };
-    for (let k = 0; k < 8; k++) { v.set(k & 1 ? box.max.x : box.min.x, k & 2 ? box.max.y : box.min.y, k & 4 ? box.max.z : box.min.z).project(camera);
-      pr.x0 = Math.min(pr.x0, v.x); pr.x1 = Math.max(pr.x1, v.x); pr.y0 = Math.min(pr.y0, v.y); pr.y1 = Math.max(pr.y1, v.y); }
-    if (!mobile) { const ox = (pr.x0 + pr.x1) / 2 * W / 2, oy = (pr.y0 + pr.y1) / 2 * H / 2; camera.position.x += ox * wpp; camera.position.y += oy * wpp; camera.lookAt(camera.position.x, camera.position.y, c.z); camera.updateProjectionMatrix(); }
+    // ajuste fino en pantalla con las cajas de cada pieza (más justas que la caja global en diagonal): escala y centra en el hueco
+    const pts = []; parts.forEach(q => { const b = new THREE.Box3().setFromObject(q.g); for (let k = 0; k < 8; k++) pts.push(new THREE.Vector3(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z)); });
+    for (let it = 0; it < 4; it++) {
+      camera.updateMatrixWorld(); const pr = { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 };
+      pts.forEach(P => { v.copy(P).project(camera); pr.x0 = Math.min(pr.x0, v.x); pr.x1 = Math.max(pr.x1, v.x); pr.y0 = Math.min(pr.y0, v.y); pr.y1 = Math.max(pr.y1, v.y); });
+      const dist = camera.position.z - c.z, k = Math.max((pr.x1 - pr.x0) / 2 / fw, (pr.y1 - pr.y0) / 2 / fh), w2 = 2 * dist * t / H;
+      const ox = (pr.x0 + pr.x1) / 2 * W / 2 - (mobile ? 0 : gapC - W / 2), oy = (pr.y0 + pr.y1) / 2 * H / 2;
+      camera.position.x += ox * w2; camera.position.y += oy * w2; camera.position.z = c.z + dist * k;
+      camera.lookAt(camera.position.x, camera.position.y, c.z); camera.updateProjectionMatrix(); }
     ready = true; last = -1; draw(cur);
   }
   const sm = t => t * t * (3 - 2 * t), cl = (a, b, x) => Math.min(b, Math.max(a, x));
@@ -91,5 +99,7 @@ export function createDespiece(canvas, { reduced }) {
     scene.updateMatrixWorld(); renderer.render(scene, camera);
   }
   addEventListener('resize', layout); requestAnimationFrame(layout);
-  return { setProgress(p) { cur = p; if (Math.abs(p - last) > 1e-4) { last = p; draw(p); } }, layout };
+  const bounds = () => { const r = { l: 1e9, r: -1e9, t: 1e9, b: -1e9 }; parts.forEach(q => { const b = new THREE.Box3().setFromObject(q.g);
+    for (let k = 0; k < 8; k++) { v.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z).project(camera); const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H; r.l = Math.min(r.l, x); r.r = Math.max(r.r, x); r.t = Math.min(r.t, y); r.b = Math.max(r.b, y); } }); return r; };
+  return { bounds, setProgress(p) { cur = p; if (Math.abs(p - last) > 1e-4) { last = p; draw(p); } }, layout };
 }
