@@ -15,7 +15,7 @@ export function createScene(canvas, { reduced }) {
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
 
   scene.add(new THREE.HemisphereLight(0xfff5e6, 0x3a2e28, 1.4));
-  const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(4, 8, 6); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); key.shadow.bias = -0.0005; scene.add(key);
+  const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(0, 10, 3); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); key.shadow.bias = -0.0005; scene.add(key);
   const fill = new THREE.DirectionalLight(0xfff0e0, 0.8); fill.position.set(-4, 3, 5); scene.add(fill);
   const rim = new THREE.DirectionalLight(new THREE.Color(C.jade), 1.2); rim.position.set(-5, 3, -4); scene.add(rim);
 
@@ -98,12 +98,26 @@ export function createScene(canvas, { reduced }) {
   // carro sobre el riel
   box(0.34, 0.24, 0.05, alu, 0, 0.6, -0.2, head);
   for (const sx of [-1, 1]) for (const sy of [-1, 1]) { const wh = cyl(0.028, 0.03, blackPl, head, 16); wh.rotation.x = Math.PI / 2; wh.position.set(sx * 0.12, 0.6 + sy * 0.09, -0.235); }
-  // tubo PTFE y cable con curva
-  const ptfe = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.8, 0), new THREE.Vector3(0, 1.1, 0), new THREE.Vector3(-0.15, 1.4, -0.15), new THREE.Vector3(-0.55, 1.6, -0.45)]), 40, 0.016, 10),
-    new THREE.MeshPhysicalMaterial({ color: 0xf4f1ea, roughness: 0.25, transmission: 0.2, transparent: true, opacity: 0.9 })); ptfe.castShadow = true; head.add(ptfe);
-  const fil = new THREE.Mesh(new THREE.TubeGeometry(ptfe.geometry.parameters.path, 40, 0.007, 6), new THREE.MeshStandardMaterial({ color: C.terracota })); head.add(fil);
+  // tubo PTFE y cable: curva regenerada cada frame desde el cabezal hasta clips en el travesaño
   box(0.06, 0.06, 0.06, grey, 0, 0.8, 0, head); // acople
-  const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.12, 0.8, -0.1), new THREE.Vector3(0.2, 1.05, -0.2), new THREE.Vector3(0.35, 1.25, -0.4), new THREE.Vector3(0.7, 1.35, -0.6)]), 40, 0.02, 8), blackPl); cable.castShadow = true; head.add(cable);
+  const barY = 0.14 + PH + 0.05, clipZ = PZ + 0.09;
+  const anchors = { ptfe: new THREE.Vector3(-0.35, barY - 0.02, clipZ), cable: new THREE.Vector3(0.4, barY - 0.02, clipZ) };
+  for (const k in anchors) box(0.08, 0.08, 0.05, grey, anchors[k].x, barY, PZ + 0.085);
+  const ptfeM = new THREE.MeshPhysicalMaterial({ color: 0xf4f1ea, roughness: 0.25, transparent: true, opacity: 0.85 });
+  const tubes = [
+    { off: new THREE.Vector3(0, 0.83, 0), a: anchors.ptfe, r: 0.016, m: ptfeM },
+    { off: new THREE.Vector3(0, 0.83, 0), a: anchors.ptfe, r: 0.007, m: new THREE.MeshStandardMaterial({ color: C.terracota }) },
+    { off: new THREE.Vector3(0.12, 0.72, -0.15), a: anchors.cable, r: 0.02, m: blackPl },
+  ].map(t => { const mesh = new THREE.Mesh(new THREE.BufferGeometry(), t.m); mesh.castShadow = true; printer.add(mesh); return { ...t, mesh }; });
+  const _p0 = new THREE.Vector3();
+  function updateTubes() {
+    for (const t of tubes) {
+      _p0.copy(head.position).add(t.off);
+      const h = THREE.MathUtils.clamp((t.a.y - _p0.y) * 0.5, 0.04, 0.45);
+      const curve = new THREE.CubicBezierCurve3(_p0.clone(), _p0.clone().add(new THREE.Vector3(0, h, 0)), t.a.clone().add(new THREE.Vector3(0, -Math.max(0.12, h * 0.6), 0.25)), t.a);
+      t.mesh.geometry.dispose(); t.mesh.geometry = new THREE.TubeGeometry(curve, 32, t.r, 8);
+    }
+  }
   const GANTRY_OFF = 0.6; // altura del riel respecto a la punta
   // --- Arco extruido del isotipo: un mesh por path con el fill del propio SVG ---
   const data = new SVGLoader().parse(svgText);
@@ -127,7 +141,7 @@ export function createScene(canvas, { reduced }) {
   const hot = new THREE.Mesh(new THREE.PlaneGeometry(archW * 2.2, 1), new THREE.MeshBasicMaterial({ color: 0xffb08a, transparent: true, opacity: 0, depthWrite: false }));
   hot.rotation.x = -Math.PI / 2; printer.add(hot);
   const groundY = 0;
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 48), new THREE.ShadowMaterial({ opacity: 0.18 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(2.4, 48), new THREE.ShadowMaterial({ opacity: 0.16 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
   // muestreo de contorno por altura: intervalos X ocupados a cada altura (aprox. con raycast 2D sobre shapes)
   const pts = shapes.map(sh => ({ o: sh.getPoints(8), h: sh.holes.map(h => h.getPoints(8)) }));
@@ -167,6 +181,7 @@ export function createScene(canvas, { reduced }) {
     const targetY = done ? archGroup.position.y + archH + 0.35 : archGroup.position.y + hNow + 0.005;
     head.position.y += (targetY - head.position.y) * Math.min(1, dt * 12);
     gantry.position.y = head.position.y + GANTRY_OFF;
+    updateTubes();
     if (!reduced) { blades.rotation.z += dt * 18; sblades.rotation.z += dt * (printing ? 25 : 4); }
     hot.position.set(0, archGroup.position.y + hNow, 0); hot.material.opacity = printing ? 0.35 : 0; hot.visible = false;
     // al final gira suave
