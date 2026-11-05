@@ -105,7 +105,7 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
     g.scale.setScalar(g.userData.base); scene.add(g); return g;
   });
   let p = 0, W = 1, H = 1;
-  function layout() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); W = w; H = h; }
+  function layout() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); camera.updateMatrixWorld(); W = w; H = h; }
   addEventListener('resize', layout); layout();
   // posición en pantalla: cruza en diagonal curva de un lado al otro; t∈[0,1] por scroll
   const halfAt = z => { const d = camera.position.z - z, hh = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * d; return [hh * camera.aspect, hh]; };
@@ -129,15 +129,31 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
     const r = prog * 12 + u.off * 6;
     o.rotation.set(r * u.spin.x * 0.5, r * u.spin.y * 0.5 + t * 0.15, r * u.spin.z * 0.5);
   }
-  // legibilidad: si un objeto pasa por detrás de un titular, texto, botón, tarjeta o formulario, se desvanece casi por completo
-  const v = new THREE.Vector3();
+  // Proyecta el volumen completo: un radio estimado puede dejar fuera
+  // los extremos de piezas alargadas, especialmente en pantallas anchas.
+  const v = new THREE.Vector3(), box = new THREE.Box3(), corner = new THREE.Vector3();
+  function screenBounds(o) {
+    o.updateWorldMatrix(true, true);
+    box.setFromObject(o);
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      corner.set(x, y, z).project(camera);
+      const sx = (corner.x + 1) / 2 * W, sy = (1 - corner.y) / 2 * H;
+      left = Math.min(left, sx); right = Math.max(right, sx);
+      top = Math.min(top, sy); bottom = Math.max(bottom, sy);
+    }
+    return { left, top, right, bottom };
+  }
   function fade(o, rects, instant) {
-    v.copy(o.position).project(camera);
-    const sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H, [, hh] = halfAt(o.userData.z), rad = o.userData.lane ? o.userData.base * 0.6 / hh * H / 2 + 4 : o.userData.base * (mobile ? 0.6 : 0.8) / hh * H / 2 + (mobile ? 6 : 36); // margen amplio: se va antes de llegar
-    const hit = rects.some(r => sx + rad > r.left && sx - rad < r.right && sy + rad > r.top && sy - rad < r.bottom);
-    const u = o.userData, target = hit ? 0 : u.s * (u.sec === 'hero' ? 1 : BG); u.a = instant ? target : u.a + (target - u.a) * 0.3; if (o.userData.a < 0.01) o.userData.a = 0;
-    o.visible = o.userData.a > 0;
-    o.traverse(m => { if (m.material) { m.material.opacity = o.userData.a; m.material.depthWrite = o.userData.a > 0.9 || (u.sec !== 'hero' && o.userData.a > BG * 0.9); } });
+    const bounds = screenBounds(o), pad = mobile ? 8 : 24;
+    const hit = rects.some(r => bounds.right + pad > r.left && bounds.left - pad < r.right && bounds.bottom + pad > r.top && bounds.top - pad < r.bottom);
+    const u = o.userData, target = hit ? 0 : u.s * (u.sec === 'hero' ? 1 : BG);
+    // Ocultar en el mismo fotograma evita residuos durante scroll rápido. Solo
+    // la reaparición es gradual, cuando todo el volumen ha salido del texto.
+    u.a = hit || instant ? target : u.a + (target - u.a) * 0.3;
+    if (u.a < 0.01) u.a = 0;
+    o.visible = u.a > 0;
+    o.traverse(m => { if (m.material) { m.material.opacity = u.a; m.material.depthWrite = u.a > 0.9 || (u.sec !== 'hero' && u.a > BG * 0.9); } });
   }
   const els = avoid ? [...document.querySelectorAll(avoid)] : [];
     const rng = document.createRange();
@@ -169,6 +185,6 @@ export function createFloaters(canvas, { reduced, avoid = '' }) {
     return { setProgress() {}, tick() {} };
   }
   // QA: círculos en pantalla de los objetos visibles (centro y radio aproximado en px)
-  const debugRects = () => objs.filter(o => o.visible && o.userData.a > 0.05).map(o => { v.copy(o.position).project(camera); const [, hh] = halfAt(o.userData.z), rad = o.userData.base * 0.5 / hh * H / 2; return { x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, rad, sec: o.userData.sec, lane: !!o.userData.lane, a: +o.userData.a.toFixed(2) }; });
+  const debugRects = () => objs.filter(o => o.visible && o.userData.a > 0.05).map(o => { v.copy(o.position).project(camera); const [, hh] = halfAt(o.userData.z), rad = o.userData.base * 0.5 / hh * H / 2; return { x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, rad, sec: o.userData.sec, lane: !!o.userData.lane, a: +o.userData.a.toFixed(2), bounds: screenBounds(o) }; });
   return { setProgress(v) { p = v; }, tick(t) { render(p, t); }, debugRects };
 }
