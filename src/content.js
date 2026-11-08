@@ -1,6 +1,6 @@
 // Textos centralizados. Confirmados por Marketing 3D salvo los marcados PROVISIONAL.
 export const content = {
-  marca: { nombre: '3Dezign', provisional: true /* PROVISIONAL: nombre pendiente de confirmación del usuario */ },
+  marca: { nombre: 'Camino Digital', provisional: false },
   hero: {
     titulo: 'Diseñamos y fabricamos, capa por capa.',
     subtitulo: 'Impresión 3D, carpintería y artesanía desde Calkiní, Campeche.',
@@ -46,7 +46,7 @@ export const content = {
   },
   nosotros: {
     titulo: 'Sobre nosotros',
-    texto: '3Dezign nace en Calkiní, Campeche, para acercar la fabricación digital a la región. Unimos la mecatrónica, el diseño 3D y el oficio artesanal para resolver problemas reales y crear piezas con identidad.',
+    texto: 'Camino Digital nace en Calkiní, Campeche, para acercar la fabricación digital a la región. Unimos la mecatrónica, el diseño 3D y el oficio artesanal para resolver problemas reales y crear piezas con identidad.',
   },
   contacto: {
     titulo: 'Contacto',
@@ -55,5 +55,5 @@ export const content = {
     canales: ['WhatsApp', 'Facebook', 'Correo'], // sin enlaces reales: «Próximamente»
     avisoForm: 'El formulario aún no está activo. Muy pronto podrás enviarnos tu idea por aquí.',
   },
-  pie: '© 3Dezign · Calkiní, Campeche.',
+  pie: '© Camino Digital · Calkiní, Campeche.',
 };

@@ -10,15 +10,15 @@ import { createDespiece } from './despiece.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const marca = c.marca.nombre.replace(/^3D/, '<b>3D</b>');
-const iso = import.meta.env.BASE_URL + '02_isotipo.svg';
+const plano = import.meta.env.BASE_URL + 'logo_plano.png';
+const piedra = import.meta.env.BASE_URL + 'logo_piedra.png';
 
 document.querySelector('#app').innerHTML = `
 <canvas id="secbg" aria-hidden="true"></canvas>
 <canvas id="floaters" aria-hidden="true"></canvas>
 <a class="skip" href="#main">Saltar al contenido</a>
 <header class="nav">
-  <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${iso}" alt="" width="38" height="38"><span>${marca}</span></a>
+  <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${plano}" alt="" width="160" height="52"></a>
   <nav aria-label="Principal"><ul>
     <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#carpinteria">Carpintería</a></li>
     <li><a href="#artesanias">Artesanías</a></li><li><a href="#nosotros">Nosotros</a></li><li><a href="#contacto">Contacto</a></li>
@@ -26,7 +26,7 @@ document.querySelector('#app').innerHTML = `
 </header>
 <main id="main">
   <section id="hero" aria-label="Inicio">
-    <canvas id="scene" role="img" aria-label="Animación: una impresora 3D imprime capa por capa el arco maya del logotipo de ${c.marca.nombre}"></canvas>
+    <canvas id="scene" role="img" aria-label="Animación: una impresora 3D imprime capa por capa el arco maya con la boquilla del logotipo de Camino Digital"></canvas>
     <div class="hero-copy">
       <span class="eyebrow">${c.contacto.ubicacion}</span>
       <h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p>
@@ -57,7 +57,7 @@ document.querySelector('#app').innerHTML = `
   </div></section>
   <section id="nosotros" class="s dark"><div class="wrap split">
     <div><span class="eyebrow">Calkiní, Campeche</span><h2 class="reveal">${c.nosotros.titulo}</h2><p class="lead reveal">${c.nosotros.texto}</p></div>
-    <img src="${iso}" alt="Isotipo de ${c.marca.nombre}: arco maya" width="320" height="320">
+    <img class="logo-piedra" src="${piedra}" alt="Logotipo de Camino Digital: arco maya de piedra con una boquilla de impresora 3D al centro" width="1408" height="1408">
   </div></section>
   <section id="contacto" class="s alt"><div class="wrap">
     <span class="eyebrow">Cotiza</span><h2>${c.contacto.titulo}</h2><p class="lead">${c.contacto.texto}</p>
@@ -71,7 +71,7 @@ document.querySelector('#app').innerHTML = `
     <div class="canales">${c.contacto.canales.map(n=>`<span class="canal">${n} · <small>Próximamente</small></span>`).join('')}</div>
   </div></section>
 </main>
-<footer>${c.pie}<span class="obra">Sitio en construcción</span></footer>
+<footer><img class="logo-plano" src="${plano}" alt="" width="160" height="52">${c.pie}<span class="obra">Sitio en construcción</span></footer>
 ${reduced ? '' : `<div class="hero-clone" aria-hidden="true" inert><img class="shot" alt="">
   <div class="hero-copy"><span class="eyebrow">${c.contacto.ubicacion}</span><h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p><span class="btn ghost">${c.hero.boton} <span aria-hidden="true">→</span></span></div>
   <p class="progress">capa 0 / 120 · 0.20 mm</p></div><div class="loop-pad" aria-hidden="true"></div>`}`;
@@ -80,7 +80,7 @@ document.querySelector('form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
 });
 
-const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, .dcol, form, .canales, .split img' });
+const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, .dcol, form, .canales, .split img, .brand, footer img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
 const desp = createDespiece(document.querySelector('#despiece'), { reduced });
 // celular: el texto va arriba y abajo del escenario fijado (sin tapar el modelo); escritorio: a los costados
