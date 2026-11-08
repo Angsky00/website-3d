@@ -70,10 +70,18 @@ export function models(C) {
   M.spring2 = [[flat(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helix.map(v => new THREE.Vector3(v.x * 0.7, v.y * 0.8, v.z * 0.7))), 160, 0.03, 5)), C.carbon]];
   // --- Gema facetada (Artesanías)
   M.gem = [[flat(new THREE.OctahedronGeometry(0.42, 0).scale(1, 1.35, 1)), C.jade]];
-  // --- Arco maya (isotipo): bloque con falsa bóveda escalonada
-  const ar = new THREE.Shape(); ar.moveTo(-0.5, -0.45); ar.lineTo(0.5, -0.45); ar.lineTo(0.5, 0.45); ar.lineTo(-0.5, 0.45); ar.closePath();
-  const vh = new THREE.Path(); [[-0.2, -0.45], [-0.2, -0.05], [-0.13, -0.05], [-0.13, 0.08], [-0.06, 0.08], [-0.06, 0.2], [0, 0.28], [0.06, 0.2], [0.06, 0.08], [0.13, 0.08], [0.13, -0.05], [0.2, -0.05], [0.2, -0.45]].forEach(([x, y], k) => k ? vh.lineTo(x, y) : vh.moveTo(x, y)); ar.holes.push(vh);
-  M.arch = [[ext(ar, 0.22, 0.015), C.terracota], [flat(at(new THREE.BoxGeometry(1.1, 0.08, 0.3), 0, 0.5, 0)), C.jade]];
+  // --- Arco maya + boquilla (isotipo Camino Digital), low-poly para fondo de sección
+  const leg = sign => { const s = new THREE.Shape();
+    s.moveTo(sign * 0.50, -0.48); s.lineTo(sign * 0.26, -0.48); s.lineTo(sign * 0.08, 0.20);
+    s.lineTo(sign * 0.22, 0.20); s.lineTo(sign * 0.32, 0.08); s.lineTo(sign * 0.50, -0.48); s.closePath();
+    return ext(s, 0.22, 0.012); };
+  M.arch = [[mergeGeometries([
+    leg(-1), leg(1),
+    at(new THREE.BoxGeometry(0.86, 0.16, 0.22), 0, 0.30, 0),
+    at(new THREE.BoxGeometry(0.13, 0.26, 0.16), 0, 0.24, 0),
+    at(new THREE.CylinderGeometry(0.10, 0.10, 0.14, 6), 0, 0.05, 0),
+    at(new THREE.ConeGeometry(0.08, 0.24, 6), 0, -0.13, 0),
+  ]), C.arena]];
   return M;
 }
 

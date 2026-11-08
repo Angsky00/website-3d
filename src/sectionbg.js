@@ -21,10 +21,9 @@ export function createSectionBg(canvas) {
     impresion: mobile ? [['gear', 0, 0.3, 7], ['nut', 0.9, -1.4, 3.2]] : [['gear', -1.2, 0.2, 7], ['gear2', 2.6, -0.6, 4.5], ['nut', 0.9, 1.8, 2.6]],
     carpinteria: mobile ? [['bracket', 0, 0.2, 6], ['hinge', 0.6, -1.6, 3.4]] : [['bracket', -1.4, 0, 6.5], ['hinge', 2.4, 0.4, 4.5]],
     artesanias: mobile ? [['duck', -0.2, 0.2, 5.5], ['gem', 1, -1.6, 2.6]] : [['duck', -1.8, -0.2, 5.5], ['duck', 2.6, 0.9, 3.2], ['gem', 1.4, -1.4, 2.8]],
-    nosotros: [['arch', 0, 0, mobile ? 6.5 : 7.5]], // colores del isotipo: viga jade, cuerpo terracota, base carbón
+    nosotros: [['arch', 0, 0, mobile ? 6.5 : 7.5, C.arena]], // isotipo: arco + boquilla en arena (legible sobre carbón)
     contacto: [['benchy', 0, 0, mobile ? 6 : 7]],
   };
-  M.arch = [...M.arch, [new THREE.BoxGeometry(1.15, 0.08, 0.3).translate(0, -0.49, 0), C.carbon]];
   const groups = {};
   for (const [sec, list] of Object.entries(MAP)) {
     const G = new THREE.Group(); G.visible = false; scene.add(G);

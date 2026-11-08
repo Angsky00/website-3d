@@ -120,7 +120,7 @@ export function createScene(canvas, { reduced }) {
     }
   }
   const GANTRY_OFF = 0.6; // altura del riel respecto a la punta
-  // --- Arco extruido del isotipo: un mesh por path con el fill del propio SVG ---
+  // --- Arco + boquilla extruidos del isotipo (SVG técnico trazado del logo oficial, sin wordmark) ---
   const data = new SVGLoader().parse(svgText);
   const parts = [];
   data.paths.forEach(p => { const fill = p.userData.style.fill; if (fill && fill !== 'none') parts.push({ fill, shapes: SVGLoader.createShapes(p) }); });
@@ -135,7 +135,7 @@ export function createScene(canvas, { reduced }) {
   const arch = new THREE.Group(); archGroup.add(arch);
   geos.forEach((g, i) => {
     g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2); g.scale(s, s, s); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: new THREE.Color(parts[i].fill), roughness: 0.55, metalness: 0.05, clippingPlanes: [clip], side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: new THREE.Color(C.arena), roughness: 0.82, metalness: 0.08, clippingPlanes: [clip], side: THREE.DoubleSide }));
     m.castShadow = true; arch.add(m);
   });
   // capa "caliente" en el borde de impresión
