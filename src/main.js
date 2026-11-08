@@ -10,7 +10,7 @@ import { createDespiece } from './despiece.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const plano = import.meta.env.BASE_URL + 'logo_plano.png';
+const isotipo = import.meta.env.BASE_URL + 'isotipo.png';
 const piedra = import.meta.env.BASE_URL + 'logo_piedra.png';
 
 document.querySelector('#app').innerHTML = `
@@ -18,7 +18,7 @@ document.querySelector('#app').innerHTML = `
 <canvas id="floaters" aria-hidden="true"></canvas>
 <a class="skip" href="#main">Saltar al contenido</a>
 <header class="nav">
-  <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${plano}" alt="" width="160" height="52"></a>
+  <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${isotipo}" alt="" width="44" height="44">${c.marca.nombre}</a>
   <nav aria-label="Principal"><ul>
     <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#carpinteria">Carpintería</a></li>
     <li><a href="#artesanias">Artesanías</a></li><li><a href="#nosotros">Nosotros</a></li><li><a href="#contacto">Contacto</a></li>
@@ -71,7 +71,7 @@ document.querySelector('#app').innerHTML = `
     <div class="canales">${c.contacto.canales.map(n=>`<span class="canal">${n} · <small>Próximamente</small></span>`).join('')}</div>
   </div></section>
 </main>
-<footer><img class="logo-plano" src="${plano}" alt="" width="160" height="52">${c.pie}<span class="obra">Sitio en construcción</span></footer>
+<footer><img class="logo-isotipo" src="${isotipo}" alt="" width="44" height="44">${c.pie}<span class="obra">Sitio en construcción</span></footer>
 ${reduced ? '' : `<div class="hero-clone" aria-hidden="true" inert><img class="shot" alt="">
   <div class="hero-copy"><span class="eyebrow">${c.contacto.ubicacion}</span><h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p><span class="btn ghost">${c.hero.boton} <span aria-hidden="true">→</span></span></div>
   <p class="progress">capa 0 / 120 · 0.20 mm</p></div><div class="loop-pad" aria-hidden="true"></div>`}`;
