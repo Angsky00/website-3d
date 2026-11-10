@@ -22,7 +22,7 @@ for (const ch of LETRAS) {
 }
 const out = {
   glyphs, familyName: 'Nombre 3D', ascender: r(font.ascender), descender: r(font.descender),
-  underlinePosition: -100, underlineThickness: 50, resolution: 1000, original_font_information: { license: 'SIL Open Font License 1.1', copyright: 'Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"', modificada: 'subconjunto renombrado «Nombre 3D»; ver public/licencias/fuente-nombre-OFL.txt' },
+  underlinePosition: -100, underlineThickness: 50, resolution: 1000, original_font_information: { license: 'SIL Open Font License 1.1', copyright: 'Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"', modificada: 'subconjunto renombrado «Nombre 3D»; ver licencias/fuente-nombre-OFL.txt en el sitio' },
   boundingBox: { yMin: r(font.tables.head.yMin), xMin: r(font.tables.head.xMin), yMax: r(font.tables.head.yMax), xMax: r(font.tables.head.xMax) },
   cssFontWeight: 'bold', cssFontStyle: 'normal',
 };

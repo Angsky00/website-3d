@@ -99,7 +99,7 @@ document.querySelector('#contacto form').addEventListener('submit', e => {
 const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, .dcol, form, .canales, .split img, .n3d, .brand, footer img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
 const desp = createDespiece(document.querySelector('#despiece'), { reduced });
-crearNombre3D(document.querySelector('#nombre3d'), { reduced });
+crearNombre3D(document.querySelector('#nombre3d'), { reduced, textos: c.nombre3d });
 // celular: el texto va arriba y abajo del escenario fijado (sin tapar el modelo); escritorio: a los costados
 const dStage = document.querySelector('.despiece'), dL = document.querySelector('.dl-l'), dR = document.querySelector('.dl-r'), mqD = matchMedia('(max-width: 820px)');
 const placeDCols = () => { if (mqD.matches) { dStage.before(dL); dStage.after(dR); } else { dStage.append(dL, dR); } };
