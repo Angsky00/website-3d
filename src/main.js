@@ -6,6 +6,7 @@ import Lenis from 'lenis';
 import { createScene } from './scene.js';
 import { createFloaters } from './floaters.js';
 import { createSectionBg } from './sectionbg.js';
+import { crearNombre3D } from './nombre3d-ui.js';
 import { createDespiece } from './despiece.js';
 gsap.registerPlugin(ScrollTrigger);
 
@@ -20,7 +21,7 @@ document.querySelector('#app').innerHTML = `
 <header class="nav">
   <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${isotipo}" alt="" width="44" height="44">${c.marca.nombre}</a>
   <nav aria-label="Principal"><ul>
-    <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#carpinteria">Carpintería</a></li>
+    <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#nombre3d">Tu nombre en 3D</a></li><li><a href="#carpinteria">Carpintería</a></li>
     <li><a href="#artesanias">Artesanías</a></li><li><a href="#nosotros">Nosotros</a></li><li><a href="#contacto">Contacto</a></li>
   </ul></nav>
 </header>
@@ -46,7 +47,22 @@ document.querySelector('#app').innerHTML = `
     <canvas id="despiece" role="img" aria-label="Animación: las piezas del extrusor de la impresora se separan una a una en diagonal y se vuelven a armar"></canvas>
     <div class="dcol dl-l"><span class="eyebrow ri">02 · Posibilidades</span><h2 class="ri">${c.personalizado.titulo}</h2><p class="dlead ri">${c.personalizado.texto}</p><h3 class="dk ri">${c.personalizado.bloques[0].titulo}</h3><ul>${c.personalizado.bloques[0].lista.map(([k,t])=>`<li class="ri"><b>${k}</b> ${t}</li>`).join('')}</ul></div>
     <div class="dcol dl-r"><h3 class="dk ri">${c.personalizado.bloques[1].titulo}</h3><ul>${c.personalizado.bloques[1].lista.map(([k,t])=>`<li class="ri"><b>${k}</b> ${t}</li>`).join('')}</ul><p class="dcierre ri">${c.personalizado.cierre}</p><a class="btn ri" href="#contacto">${c.personalizado.boton} <span aria-hidden="true">→</span></a></div>
-  </div></section>
+  </div>
+  <div id="nombre3d" class="n3d-bloque"><div class="wrap n3d">
+    <div class="n3d-col">
+      <h2 class="reveal">${c.nombre3d.titulo}</h2>
+      <p class="lead reveal">${c.nombre3d.texto}</p>
+      <form class="n3d-form" novalidate>
+        <label>${c.nombre3d.campo}<input name="nombre3d" autocomplete="given-name" autocapitalize="words" spellcheck="false" aria-describedby="n3d-ayuda n3d-msg"></label>
+        <p id="n3d-ayuda" class="n3d-ayuda">${c.nombre3d.ayuda}</p>
+        <p id="n3d-msg" class="n3d-msg" role="status" aria-live="polite"></p>
+        <div class="n3d-btns"><button class="btn" type="submit">${c.nombre3d.descargar}</button><span class="canal n3d-impreso">${c.nombre3d.impreso} · <small>Próximamente</small></span></div>
+        <p class="mono n3d-medidas"></p>
+        <p class="n3d-legal">${c.nombre3d.legal}</p>
+      </form>
+    </div>
+    <canvas class="n3d-vista" role="img" aria-label="Vista previa 3D: tu nombre en relieve sobre una placa"></canvas>
+  </div></div></section>
   <section id="carpinteria" class="s alt"><div class="wrap">
     <span class="eyebrow">03 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>
     <p class="lead reveal">${c.carpinteria.texto}</p><div class="pending">${c.carpinteria.pendiente}</div>
@@ -76,13 +92,14 @@ ${reduced ? '' : `<div class="hero-clone" aria-hidden="true" inert><img class="s
   <div class="hero-copy"><span class="eyebrow">${c.contacto.ubicacion}</span><h1>${c.hero.titulo.replace(/capa\.$/, '<em>capa.</em>')}</h1><p>${c.hero.subtitulo}</p><span class="btn ghost">${c.hero.boton} <span aria-hidden="true">→</span></span></div>
   <p class="progress">capa 0 / 120 · 0.20 mm</p></div><div class="loop-pad" aria-hidden="true"></div>`}`;
 
-document.querySelector('form').addEventListener('submit', e => {
+document.querySelector('#contacto form').addEventListener('submit', e => {
   e.preventDefault(); document.querySelector('.aviso').textContent = c.contacto.avisoForm;
 });
 
-const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, .dcol, form, .canales, .split img, .brand, footer img' });
+const floaters = createFloaters(document.querySelector('#floaters'), { reduced, avoid: '.progress, .hero-copy, .hero-final, .s h2, .s .lead, .eyebrow, .card, .mono, .pending, .bloque, .cierre, .despiece, .dcol, form, .canales, .split img, .n3d, .brand, footer img' });
 const scene = createScene(document.querySelector('#scene'), { reduced });
 const desp = createDespiece(document.querySelector('#despiece'), { reduced });
+crearNombre3D(document.querySelector('#nombre3d'), { reduced });
 // celular: el texto va arriba y abajo del escenario fijado (sin tapar el modelo); escritorio: a los costados
 const dStage = document.querySelector('.despiece'), dL = document.querySelector('.dl-l'), dR = document.querySelector('.dl-r'), mqD = matchMedia('(max-width: 820px)');
 const placeDCols = () => { if (mqD.matches) { dStage.before(dL); dStage.after(dR); } else { dStage.append(dL, dR); } };

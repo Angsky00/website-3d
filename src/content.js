@@ -34,6 +34,15 @@ export const content = {
     cierre: 'Plástico, madera, metal y luz en una misma pieza.',
     boton: 'Cotiza tu idea',
   },
+  nombre3d: { // textos finales de Marketing 3D
+    titulo: 'Tu nombre en 3D',
+    texto: 'Escribe tu nombre y descarga el archivo listo para imprimir.',
+    campo: 'Tu nombre',
+    ayuda: 'Solo letras, hasta 12. Acentos y ñ, sí.',
+    descargar: 'Descargar mi STL',
+    impreso: 'Lo quiero impreso',
+    legal: 'Archivo gratuito para uso personal. No se permite revenderlo ni usarlo con fines comerciales.',
+  },
   carpinteria: { // PROVISIONAL: contenido pendiente del usuario
     titulo: 'Carpintería',
     texto: 'Piezas en madera hechas a mano, que combinamos con impresión 3D cuando el diseño lo pide.',
