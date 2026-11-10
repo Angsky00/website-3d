@@ -1,9 +1,7 @@
-Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+«Llavero Suave» es una versión modificada de Fredoka Bold 700: un subconjunto con las letras A–Z, a–z, Á É Í Ó Ú Ü Ñ y á é í ó ú ü ñ,
+convertido a contornos para generar los llaveros de «Tu nombre en 3D» de Camino Digital.
 
-«Nombre 3D» es una versión modificada de IBM Plex Sans Bold: un subconjunto con las letras
-A–Z, a–z, Á É Í Ó Ú Ü Ñ y á é í ó ú ü ñ, convertido al formato typeface de Three.js para
-generar los modelos de «Tu nombre en 3D» de Camino Digital. Por la cláusula de nombre
-reservado, esta versión no usa el nombre «Plex».
+Copyright 2016 The Fredoka Project Authors (https://github.com/hafontia/Fredoka-One)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

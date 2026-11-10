@@ -36,10 +36,10 @@ export const content = {
   },
   nombre3d: { // textos finales de Marketing 3D
     titulo: 'Tu nombre en 3D',
-    texto: 'Escribe tu nombre y descarga el archivo listo para imprimir.',
+    texto: 'Escribe tu nombre y descarga tu llavero listo para imprimir: una sola pieza, con ojal para la argolla.',
     campo: 'Tu nombre',
     ayuda: 'Solo letras, hasta 12. Acentos y ñ, sí.',
-    descargar: 'Descargar mi STL',
+    descargar: 'Descargar mi llavero (STL)',
     impreso: 'Lo quiero impreso',
     vacio: 'Escribe tu nombre para ver cómo queda',
     legal: 'Archivo gratuito para uso personal. No se permite revenderlo ni usarlo con fines comerciales.',

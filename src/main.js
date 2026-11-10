@@ -61,7 +61,7 @@ document.querySelector('#app').innerHTML = `
         <p class="n3d-legal">${c.nombre3d.legal}</p>
       </form>
     </div>
-    <canvas class="n3d-vista" role="img" aria-label="Vista previa 3D: tu nombre en relieve sobre una placa"></canvas>
+    <canvas class="n3d-vista" role="img" aria-label="Vista previa 3D: llavero con tu nombre en relieve"></canvas>
   </div></div></section>
   <section id="carpinteria" class="s alt"><div class="wrap">
     <span class="eyebrow">03 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>
