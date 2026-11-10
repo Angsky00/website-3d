@@ -9,8 +9,8 @@ import fuenteJSON from './fuente-nombre.json';
 export const MAX = 12;
 const LETRA = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+$/;
 // medidas en mm, pensadas para la K1C (cama 220 × 220). relieve = lo que sobresale de la placa;
-// las letras se extruyen relieve + hundido y se hunden «hundido» en la placa para quedar unidas (alto total placa + relieve = 5 mm)
-export const MEDIDAS = { letra: 16, relieve: 2.6, placa: 2.4, margen: 5, radio: 4, anchoMax: 180, anchoMin: 30, hundido: 0.4 };
+// las letras se extruyen relieve + hundido y se hunden «hundido» en la placa para quedar unidas (alto total placa + relieve = 5.4 mm)
+export const MEDIDAS = { letra: 16, relieve: 3, placa: 2.4, margen: 5, radio: 4, anchoMax: 180, anchoMin: 30, hundido: 0.4 };
 const font = new FontLoader().parse(fuenteJSON);
 
 export function validarNombre(raw) {

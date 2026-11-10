@@ -54,6 +54,6 @@ const arch = ['I', 'i', 'Ñ', 'ñ', 'N', 'n', 'José', 'Jose'].map(m.archivoNomb
 ok(new Set(arch).size === arch.length, 'nombres de archivo distintos: ' + arch.join(' '));
 ok(m.archivoNombre('Begon\u0303a') === 'camino-digital-Begoña.stl', 'archivo en NFC');
 const md = m.construirModelo('Ana'); md.texto.computeBoundingBox(); md.base.computeBoundingBox();
-ok(Math.abs(md.texto.boundingBox.max.z - md.base.boundingBox.max.z - 2.6) < 1e-3 && md.medidas.grueso === 5, 'relieve visible 2.6 y alto 5');
+ok(Math.abs(md.texto.boundingBox.max.z - md.base.boundingBox.max.z - 3) < 1e-3 && md.medidas.grueso === 5.4, 'relieve visible 3 y alto 5.4');
 await vite.close();
 console.log(fallas ? `${fallas} fallas` : 'stlqa OK'); process.exit(fallas ? 1 : 0);
