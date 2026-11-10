@@ -106,7 +106,10 @@ html,body{overflow-x:clip}
   .dcol{position:static;transform:none;width:auto;background:linear-gradient(160deg,#2E2824,var(--carbon));padding:2.5rem clamp(1.2rem,5vw,2.5rem);margin:0 calc(50% - 50vw);width:100vw}
   .dl-l{padding-top:4.5rem}.despiece{margin-top:0}}
 footer .obra{display:block;margin-top:.6rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#e07a62}
-/* Tu nombre en 3D */
+/* Tu nombre en 3D (dentro de Personalizado, después del despiece fijado) */
+section#personalizado{padding-bottom:0}
+.n3d-bloque{width:100vw;margin-left:calc(50% - 50vw);background:var(--crema);padding:clamp(4rem,10vw,7rem) clamp(1.2rem,5vw,2.5rem);scroll-margin-top:4rem}
+.n3d-bloque .wrap{position:relative;z-index:2}
 .n3d{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,4vw,3rem);align-items:center}
 .n3d-form{margin-top:1.5rem}
 .n3d-form input{font-size:1.25rem;font-weight:600}

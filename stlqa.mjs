@@ -28,5 +28,20 @@ function revisar(nombre) {
   ok(W <= 180.01 && W >= 30 && H >= 15 && H <= 40, nombre + ': medidas razonables en mm');
 }
 for (const s of ['Ana', 'José', 'Begoña', 'MARÍA', 'Güero', 'Ñ', 'i', 'Maximilianoo', 'WWWWWWWWWWWW']) revisar(s);
+
+// tildes, diéresis y virgulilla: cada pieza suelta de las letras debe apoyarse en la placa (hundida en ella) y caer dentro de su contorno
+function piezas(nombre) {
+  const mod = m.construirModelo(nombre), g = mod.texto.index ? mod.texto.toNonIndexed() : mod.texto, p = g.attributes.position, par = [];
+  const id = new Map(), k = i => [p.getX(i), p.getY(i), p.getZ(i)].map(v => Math.round(v * 1e4)).join(',');
+  const f = x => { while (par[x] !== x) x = par[x] = par[par[x]]; return x; };
+  const v = i => { const s = k(i); if (!id.has(s)) { id.set(s, par.length); par.push(par.length); } return id.get(s); };
+  for (let i = 0; i < p.count; i += 3) { const a = f(v(i)), b = f(v(i + 1)), c = f(v(i + 2)); par[b] = a; par[f(c)] = a; }
+  const comp = new Map(); for (let i = 0; i < p.count; i++) { const r = f(id.get(k(i))); const c = comp.get(r) || { z: Infinity, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity }; c.z = Math.min(c.z, p.getZ(i)); c.x0 = Math.min(c.x0, p.getX(i)); c.x1 = Math.max(c.x1, p.getX(i)); c.y0 = Math.min(c.y0, p.getY(i)); c.y1 = Math.max(c.y1, p.getY(i)); comp.set(r, c); }
+  mod.base.computeBoundingBox(); const B = mod.base.boundingBox;
+  let sueltas = 0; for (const c of comp.values()) if (!(c.z < B.max.z - 0.1 && c.x0 > B.min.x && c.x1 < B.max.x && c.y0 > B.min.y && c.y1 < B.max.y)) sueltas++;
+  console.log(nombre.padEnd(14), `${comp.size} piezas de letra · sin apoyo en la placa ${sueltas}`);
+  ok(sueltas === 0, nombre + ': tildes y ñ unidas a la placa');
+}
+for (const s of ['Begoña', 'ÑANDÚ', 'Güero', 'José', 'Íñigo']) piezas(s);
 await vite.close();
 console.log(fallas ? `${fallas} fallas` : 'stlqa OK'); process.exit(fallas ? 1 : 0);

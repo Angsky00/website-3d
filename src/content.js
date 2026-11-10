@@ -34,14 +34,14 @@ export const content = {
     cierre: 'Plástico, madera, metal y luz en una misma pieza.',
     boton: 'Cotiza tu idea',
   },
-  nombre3d: { // PROVISIONAL: propuesta de Marketing 3D, falta su versión final y dónde va
+  nombre3d: { // textos finales de Marketing 3D
     titulo: 'Tu nombre en 3D',
-    texto: 'Escribe tu nombre y descarga el archivo para imprimirlo, o pídenoslo ya impreso.',
+    texto: 'Escribe tu nombre y descarga el archivo listo para imprimir.',
     campo: 'Tu nombre',
-    ayuda: 'Solo letras, con acentos y ñ. Máximo 12.',
-    descargar: 'Descargar STL',
+    ayuda: 'Solo letras, hasta 12. Acentos y ñ, sí.',
+    descargar: 'Descargar mi STL',
     impreso: 'Lo quiero impreso',
-    legal: 'Archivo gratuito para uso personal. No está permitido venderlo.',
+    legal: 'Archivo gratuito para uso personal. No se permite revenderlo ni usarlo con fines comerciales.',
   },
   carpinteria: { // PROVISIONAL: contenido pendiente del usuario
     titulo: 'Carpintería',

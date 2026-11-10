@@ -21,7 +21,7 @@ document.querySelector('#app').innerHTML = `
 <header class="nav">
   <a class="brand" href="#hero" aria-label="${c.marca.nombre}, inicio"><img src="${isotipo}" alt="" width="44" height="44">${c.marca.nombre}</a>
   <nav aria-label="Principal"><ul>
-    <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#carpinteria">Carpintería</a></li>
+    <li><a href="#impresion">Impresión 3D</a></li><li><a href="#personalizado">Personalizado</a></li><li><a href="#nombre3d">Tu nombre en 3D</a></li><li><a href="#carpinteria">Carpintería</a></li>
     <li><a href="#artesanias">Artesanías</a></li><li><a href="#nosotros">Nosotros</a></li><li><a href="#contacto">Contacto</a></li>
   </ul></nav>
 </header>
@@ -47,10 +47,10 @@ document.querySelector('#app').innerHTML = `
     <canvas id="despiece" role="img" aria-label="Animación: las piezas del extrusor de la impresora se separan una a una en diagonal y se vuelven a armar"></canvas>
     <div class="dcol dl-l"><span class="eyebrow ri">02 · Posibilidades</span><h2 class="ri">${c.personalizado.titulo}</h2><p class="dlead ri">${c.personalizado.texto}</p><h3 class="dk ri">${c.personalizado.bloques[0].titulo}</h3><ul>${c.personalizado.bloques[0].lista.map(([k,t])=>`<li class="ri"><b>${k}</b> ${t}</li>`).join('')}</ul></div>
     <div class="dcol dl-r"><h3 class="dk ri">${c.personalizado.bloques[1].titulo}</h3><ul>${c.personalizado.bloques[1].lista.map(([k,t])=>`<li class="ri"><b>${k}</b> ${t}</li>`).join('')}</ul><p class="dcierre ri">${c.personalizado.cierre}</p><a class="btn ri" href="#contacto">${c.personalizado.boton} <span aria-hidden="true">→</span></a></div>
-  </div></section>
-  <section id="nombre3d" class="s alt"><div class="wrap n3d">
+  </div>
+  <div id="nombre3d" class="n3d-bloque"><div class="wrap n3d">
     <div class="n3d-col">
-      <span class="eyebrow">Gratis · STL</span><h2 class="reveal">${c.nombre3d.titulo}</h2>
+      <h2 class="reveal">${c.nombre3d.titulo}</h2>
       <p class="lead reveal">${c.nombre3d.texto}</p>
       <form class="n3d-form" novalidate>
         <label>${c.nombre3d.campo}<input name="nombre3d" autocomplete="given-name" autocapitalize="words" spellcheck="false" aria-describedby="n3d-ayuda n3d-msg"></label>
@@ -62,7 +62,7 @@ document.querySelector('#app').innerHTML = `
       </form>
     </div>
     <canvas class="n3d-vista" role="img" aria-label="Vista previa 3D: tu nombre en relieve sobre una placa"></canvas>
-  </div></section>
+  </div></div></section>
   <section id="carpinteria" class="s alt"><div class="wrap">
     <span class="eyebrow">03 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>
     <p class="lead reveal">${c.carpinteria.texto}</p><div class="pending">${c.carpinteria.pendiente}</div>
