@@ -4,12 +4,10 @@ import * as THREE from 'three';
 import { validarNombre, construirLlavero, cargarManifold, exportarSTL, archivoNombre } from './nombre3d.js';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
 
-// fuentes candidatas (Slowbro elige con el usuario); ?fuente=script|redonda|suave solo para comparar
-const FUENTES = import.meta.glob('./fuentes-llavero/*.json', { import: 'default' });
-export const FUENTE_POR_DEFECTO = 'script';
-const idFuente = () => { const q = new URLSearchParams(location.search).get('fuente'); return q && FUENTES[`./fuentes-llavero/${q}.json`] ? q : FUENTE_POR_DEFECTO; };
+// fuente del llavero: «Llavero Script», subconjunto renombrado de Pacifico (OFL 1.1), elegida por el usuario
+const cargarFuente = () => import('./fuentes-llavero/script.json').then(m => m.default);
 let motorP = null;
-const motor = () => motorP ??= Promise.all([cargarManifold({ locateFile: () => wasmUrl }), FUENTES[`./fuentes-llavero/${idFuente()}.json`]()]).then(([w, fuente]) => ({ w, fuente }));
+const motor = () => motorP ??= Promise.all([cargarManifold({ locateFile: () => wasmUrl }), cargarFuente()]).then(([w, fuente]) => ({ w, fuente }));
 
 const C = { arena: 0xE7D9C1, terracota: 0xB2442E, carbon: 0x1F1B18 };
 

@@ -9,7 +9,7 @@ ok(m.validarNombre('Jose\u0301').ok && m.validarNombre('Jose\u0301').nombre === 
 
 import { readFileSync } from 'node:fs';
 const w = await m.cargarManifold();
-const FUENTES = ['script', 'redonda', 'suave'];
+const FUENTES = ['script']; // Llavero Script (Pacifico), elegida por el usuario
 const fuentes = Object.fromEntries(FUENTES.map(id => [id, JSON.parse(readFileSync(`src/fuentes-llavero/${id}.json`, 'utf8'))]));
 const ALFABETO = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ'];
 for (const id of FUENTES) {

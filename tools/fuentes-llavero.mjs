@@ -6,8 +6,6 @@ import { readFileSync, writeFileSync } from 'fs';
 const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ';
 export const FUENTES = [
   { id: 'script', nombre: 'Llavero Script', origen: 'Pacifico 400', pkg: 'pacifico', file: 'pacifico-latin-400-normal.woff' },
-  { id: 'redonda', nombre: 'Llavero Redonda', origen: 'Baloo 2 ExtraBold 800', pkg: 'baloo-2', file: 'baloo-2-latin-800-normal.woff' },
-  { id: 'suave', nombre: 'Llavero Suave', origen: 'Fredoka Bold 700', pkg: 'fredoka', file: 'fredoka-latin-700-normal.woff' },
 ];
 const SEG_Q = 6, SEG_C = 8;
 for (const f of FUENTES) {
