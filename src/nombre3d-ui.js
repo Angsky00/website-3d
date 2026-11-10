@@ -4,7 +4,7 @@ import { validarNombre, construirModelo, exportarSTL, archivoNombre } from './no
 
 const C = { arena: 0xE7D9C1, terracota: 0xB2442E, carbon: 0x1F1B18 };
 
-export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
+export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {} } = {}) {
   const form = root.querySelector('form'), input = form.querySelector('input'), msg = root.querySelector('.n3d-msg');
   const medidas = root.querySelector('.n3d-medidas'), cv = root.querySelector('canvas'), boton = form.querySelector('button[type=submit]');
   let renderer = null, scene, cam, grupo, visible = false, modelo = null, raf = 0, t0 = performance.now();
@@ -44,13 +44,15 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
 
   const actualizar = () => {
     const v = validarNombre(input.value);
-    input.setAttribute('aria-invalid', v.ok ? 'false' : 'true');
+    const vacio = !input.value.trim();
+    input.setAttribute('aria-invalid', v.ok || vacio ? 'false' : 'true');
     if (!v.ok) {
-      msg.classList.remove('ok'); msg.textContent = input.value.trim() ? v.msg : '';
+      // campo vacío: invitación en gris, no error
+      msg.classList.remove('ok'); msg.classList.toggle('pista', vacio); msg.textContent = vacio ? textos.vacio : v.msg;
       modelo = null; medidas.textContent = ''; boton.disabled = true; limpiar(); return null;
     }
     boton.disabled = false;
-    msg.textContent = ''; msg.classList.remove('ok');
+    msg.textContent = ''; msg.classList.remove('ok', 'pista');
     modelo = construirModelo(v.nombre);
     const { ancho, alto, grueso } = modelo.medidas;
     medidas.textContent = `${ancho} × ${alto} × ${grueso} mm · STL`;
@@ -67,7 +69,7 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
     const blob = new Blob([exportarSTL(modelo)], { type: 'model/stl' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = archivoNombre(v.nombre);
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    msg.textContent = 'Listo: tu archivo se descargó.'; msg.classList.add('ok');
+    msg.textContent = 'Listo: tu archivo se descargó.'; msg.classList.remove('pista'); msg.classList.add('ok');
   });
   input.maxLength = 40; // tope amplio solo contra pegados enormes; el límite de 12 lo avisa validarNombre
   input.value = inicial; actualizar();

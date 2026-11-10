@@ -41,6 +41,7 @@ export const content = {
     ayuda: 'Solo letras, hasta 12. Acentos y ñ, sí.',
     descargar: 'Descargar mi STL',
     impreso: 'Lo quiero impreso',
+    vacio: 'Escribe tu nombre para ver cómo queda',
     legal: 'Archivo gratuito para uso personal. No se permite revenderlo ni usarlo con fines comerciales.',
   },
   carpinteria: { // PROVISIONAL: contenido pendiente del usuario
