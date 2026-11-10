@@ -43,5 +43,17 @@ function piezas(nombre) {
   ok(sueltas === 0, nombre + ': tildes y ñ unidas a la placa');
 }
 for (const s of ['Begoña', 'ÑANDÚ', 'Güero', 'José', 'Íñigo']) piezas(s);
+
+// avisos específicos y nombres de archivo
+const msg = s => m.validarNombre(s).msg;
+ok(msg('Maximilianooo').startsWith('Máximo 12 letras. Prueba con tu apodo'), 'aviso de más de 12');
+ok(m.validarNombre('JoséMaríaLuz'.normalize('NFD')).ok, '12 letras con acentos combinados no cuentan doble');
+for (const s of ['François', 'Weiß', 'Àlex', 'Øyvind']) ok(msg(s) === 'Esa letra no está disponible. Usa letras del español.', 'letra no disponible: ' + s);
+for (const s of ['Ana!', 'José❤', '@ana']) ok(msg(s).startsWith('Sin símbolos'), 'símbolo: ' + s);
+const arch = ['I', 'i', 'Ñ', 'ñ', 'N', 'n', 'José', 'Jose'].map(m.archivoNombre);
+ok(new Set(arch).size === arch.length, 'nombres de archivo distintos: ' + arch.join(' '));
+ok(m.archivoNombre('Begon\u0303a') === 'camino-digital-Begoña.stl', 'archivo en NFC');
+const md = m.construirModelo('Ana'); md.texto.computeBoundingBox(); md.base.computeBoundingBox();
+ok(Math.abs(md.texto.boundingBox.max.z - md.base.boundingBox.max.z - 2.6) < 1e-3 && md.medidas.grueso === 5, 'relieve visible 2.6 y alto 5');
 await vite.close();
 console.log(fallas ? `${fallas} fallas` : 'stlqa OK'); process.exit(fallas ? 1 : 0);

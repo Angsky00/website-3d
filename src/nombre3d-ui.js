@@ -1,12 +1,12 @@
 // Interfaz de «Tu nombre en 3D»: vista previa (solo cuando la sección está a la vista) y descarga.
 import * as THREE from 'three';
-import { validarNombre, construirModelo, exportarSTL, archivoNombre, MAX } from './nombre3d.js';
+import { validarNombre, construirModelo, exportarSTL, archivoNombre } from './nombre3d.js';
 
 const C = { arena: 0xE7D9C1, terracota: 0xB2442E, carbon: 0x1F1B18 };
 
 export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
   const form = root.querySelector('form'), input = form.querySelector('input'), msg = root.querySelector('.n3d-msg');
-  const medidas = root.querySelector('.n3d-medidas'), cv = root.querySelector('canvas');
+  const medidas = root.querySelector('.n3d-medidas'), cv = root.querySelector('canvas'), boton = form.querySelector('button[type=submit]');
   let renderer = null, scene, cam, grupo, visible = false, modelo = null, raf = 0, t0 = performance.now();
 
   const iniciar = () => {
@@ -34,6 +34,7 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
     const z = -(modelo.medidas.grueso) / 2; b.position.z = z; t.position.z = z;
     grupo.add(b, t); encuadrar(); render();
   };
+  const limpiar = () => { if (!renderer) return; grupo.children.forEach(o => o.geometry.dispose()); grupo.clear(); render(); };
   const render = () => { if (renderer) renderer.render(scene, cam); };
   const loop = now => {
     raf = 0; if (!visible || reduced || !renderer) return;
@@ -44,7 +45,11 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
   const actualizar = () => {
     const v = validarNombre(input.value);
     input.setAttribute('aria-invalid', v.ok ? 'false' : 'true');
-    if (!v.ok) { msg.classList.remove('ok'); msg.textContent = input.value.trim() ? v.msg : ''; return null; }
+    if (!v.ok) {
+      msg.classList.remove('ok'); msg.textContent = input.value.trim() ? v.msg : '';
+      modelo = null; medidas.textContent = ''; boton.disabled = true; limpiar(); return null;
+    }
+    boton.disabled = false;
     msg.textContent = ''; msg.classList.remove('ok');
     modelo = construirModelo(v.nombre);
     const { ancho, alto, grueso } = modelo.medidas;
@@ -57,14 +62,15 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní' } = {}) {
   form.addEventListener('submit', e => {
     e.preventDefault(); clearTimeout(pend);
     const v = validarNombre(input.value);
-    if (!v.ok) { msg.textContent = v.msg; input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    if (!v.ok) { actualizar(); msg.textContent = v.msg; input.focus(); return; }
     actualizar();
     const blob = new Blob([exportarSTL(modelo)], { type: 'model/stl' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = archivoNombre(v.nombre);
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     msg.textContent = 'Listo: tu archivo se descargó.'; msg.classList.add('ok');
   });
-  input.maxLength = MAX; input.value = inicial; actualizar();
+  input.maxLength = 40; // tope amplio solo contra pegados enormes; el límite de 12 lo avisa validarNombre
+  input.value = inicial; actualizar();
   new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) { iniciar(); render(); arrancar(); } }, { rootMargin: '200px 0px' }).observe(cv);
   addEventListener('resize', redimensionar);
   return { actualizar, get modelo() { return modelo; } };

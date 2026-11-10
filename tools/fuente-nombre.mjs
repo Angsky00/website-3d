@@ -1,5 +1,5 @@
 // Genera src/fuente-nombre.json (formato typeface de Three.js) con solo las letras permitidas
-// a partir de IBM Plex Sans Bold (SIL OFL 1.1, © IBM Corp.). Uso: node tools/fuente-nombre.mjs
+// a partir de IBM Plex Sans Bold (SIL OFL 1.1, © 2017 IBM Corp., nombre reservado «Plex»: el subconjunto se llama «Nombre 3D»). Uso: node tools/fuente-nombre.mjs
 import opentype from 'opentype.js';
 import { readFileSync, writeFileSync } from 'fs';
 const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ';
@@ -21,8 +21,8 @@ for (const ch of LETRAS) {
   glyphs[ch] = { ha: r(g.advanceWidth), x_min: r(bb.x1), x_max: r(bb.x2), o };
 }
 const out = {
-  glyphs, familyName: 'Nombre 3D (subconjunto de IBM Plex Sans Bold)', ascender: r(font.ascender), descender: r(font.descender),
-  underlinePosition: -100, underlineThickness: 50, resolution: 1000, original_font_information: { license: 'SIL Open Font License 1.1', copyright: 'Copyright 2019 IBM Corp.' },
+  glyphs, familyName: 'Nombre 3D', ascender: r(font.ascender), descender: r(font.descender),
+  underlinePosition: -100, underlineThickness: 50, resolution: 1000, original_font_information: { license: 'SIL Open Font License 1.1', copyright: 'Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"', modificada: 'subconjunto renombrado «Nombre 3D»; ver public/licencias/fuente-nombre-OFL.txt' },
   boundingBox: { yMin: r(font.tables.head.yMin), xMin: r(font.tables.head.xMin), yMax: r(font.tables.head.yMax), xMax: r(font.tables.head.xMax) },
   cssFontWeight: 'bold', cssFontStyle: 'normal',
 };

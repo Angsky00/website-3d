@@ -8,8 +8,9 @@ import fuenteJSON from './fuente-nombre.json';
 
 export const MAX = 12;
 const LETRA = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+$/;
-// medidas en mm, pensadas para la K1C (cama 220 × 220)
-export const MEDIDAS = { letra: 16, relieve: 3, placa: 2.4, margen: 5, radio: 4, anchoMax: 180, anchoMin: 30, hundido: 0.4 };
+// medidas en mm, pensadas para la K1C (cama 220 × 220). relieve = lo que sobresale de la placa;
+// las letras se extruyen relieve + hundido y se hunden «hundido» en la placa para quedar unidas (alto total placa + relieve = 5 mm)
+export const MEDIDAS = { letra: 16, relieve: 2.6, placa: 2.4, margen: 5, radio: 4, anchoMax: 180, anchoMin: 30, hundido: 0.4 };
 const font = new FontLoader().parse(fuenteJSON);
 
 export function validarNombre(raw) {
@@ -17,8 +18,13 @@ export function validarNombre(raw) {
   if (!s) return { ok: false, nombre: s, msg: 'Escribe tu nombre.' };
   if (/\s/.test(s)) return { ok: false, nombre: s, msg: 'Solo un nombre, sin espacios.' };
   if (/\d/.test(s)) return { ok: false, nombre: s, msg: 'Sin números: solo letras.' };
-  if (!LETRA.test(s)) return { ok: false, nombre: s, msg: 'Sin símbolos: solo letras, con acentos y ñ.' };
-  if ([...s].length > MAX) return { ok: false, nombre: s, msg: `Máximo ${MAX} letras.` };
+  if (!LETRA.test(s)) {
+    // letras de otros idiomas (À, ç, ß…) tienen su propio aviso; el resto son números, emoji o signos
+    const fuera = [...s].filter(ch => !LETRA.test(ch));
+    const msg = fuera.every(ch => /\p{L}\p{M}*/u.test(ch)) ? 'Esa letra no está disponible. Usa letras del español.' : 'Sin símbolos: solo letras, con acentos y ñ.';
+    return { ok: false, nombre: s, msg };
+  }
+  if ([...s].length > MAX) return { ok: false, nombre: s, msg: 'Máximo 12 letras. Prueba con tu apodo o solo el primer nombre.' };
   return { ok: true, nombre: s, msg: '' };
 }
 
@@ -35,7 +41,7 @@ function placa(w, h, r, t) {
 export function construirModelo(nombre, m = MEDIDAS) {
   let size = m.letra, texto;
   for (let i = 0; i < 2; i++) {
-    texto = new TextGeometry(nombre, { font, size, depth: m.relieve, curveSegments: 5, bevelEnabled: false });
+    texto = new TextGeometry(nombre, { font, size, depth: m.relieve + m.hundido, curveSegments: 5, bevelEnabled: false });
     texto.computeBoundingBox();
     const w = texto.boundingBox.max.x - texto.boundingBox.min.x;
     if (w + 2 * m.margen <= m.anchoMax) break;
@@ -46,7 +52,7 @@ export function construirModelo(nombre, m = MEDIDAS) {
   const tw = bb.max.x - bb.min.x, th = bb.max.y - bb.min.y;
   const W = Math.max(m.anchoMin, tw + 2 * m.margen), H = th + 2 * m.margen;
   const base = placa(W, H, Math.min(m.radio, H / 2 - 0.01), m.placa);
-  const ancho = Math.round(W * 10) / 10, alto = Math.round(H * 10) / 10, grueso = Math.round((m.placa - m.hundido + m.relieve) * 10) / 10;
+  const ancho = Math.round(W * 10) / 10, alto = Math.round(H * 10) / 10, grueso = Math.round((m.placa + m.relieve) * 10) / 10;
   return { texto, base, medidas: { ancho, alto, grueso } };
 }
 
@@ -60,4 +66,5 @@ export function exportarSTL(modelo) {
   return data; // DataView
 }
 
-export const archivoNombre = n => 'camino-digital-' + n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() + '.stl';
+// conserva mayúsculas, acentos y ñ para que «I» e «i» o «Ñ» y «n» no choquen
+export const archivoNombre = n => 'camino-digital-' + n.normalize('NFC') + '.stl';
