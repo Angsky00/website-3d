@@ -1,7 +1,9 @@
 «Llavero Moderna» es una versión modificada de Lobster Two Bold 700: un subconjunto con las letras A–Z, a–z, Á É Í Ó Ú Ü Ñ y á é í ó ú ü ñ,
 convertido a contornos para generar los llaveros de «Tu nombre en 3D» de Camino Digital.
 
-Copyright (c) 2011 by Pablo Impallari (www.impallari.com impallari@gmail.com). All rights reserved. LobsterTwo-Italic.ttf: Copyright (c) 2011 by Pablo Impallari (www.impallari.com impallari@gmail.com). All rights reserved. LobsterTwo-Bold.ttf: Copyright (c) 2011 by Pablo Impallari (www.impallari.com impallari@gmail.com). All rights reserved. LobsterTwo-BoldItalic.ttf: Copyright (c) 2011 by Pablo Impallari (www.impallari.com impallari@gmail.com). All rights reserved.
+Copyright (c) 2011, Pablo Impallari (www.impallari.com|impallari@gmail.com),
+Copyright (c) 2011, Igino Marini. (www.ikern.com|mail@iginomarini.com),
+with Reserved Font Names "Lobster" and "Lobster Two".
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -21,7 +23,7 @@ with others.
 
 The OFL allows the licensed fonts to be used, studied, modified and
 redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
+fonts, including any derivative works, can be bundled, embedded, 
 redistributed and/or sold with any software provided that any reserved
 names are not used by derivative works. The fonts and derivatives,
 however, cannot be released under any other type of license. The

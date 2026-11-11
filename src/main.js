@@ -48,22 +48,24 @@ document.querySelector('#app').innerHTML = `
     <div class="dcol dl-l"><span class="eyebrow ri">02 · Posibilidades</span><h2 class="ri">${c.personalizado.titulo}</h2><p class="dlead ri">${c.personalizado.texto}</p><h3 class="dk ri">${c.personalizado.bloques[0].titulo}</h3><ul>${c.personalizado.bloques[0].lista.map(([k,t])=>`<li class="ri"><b>${k}</b> ${t}</li>`).join('')}</ul></div>
     <div class="dcol dl-r"><h3 class="dk ri">${c.personalizado.bloques[1].titulo}</h3><ul>${c.personalizado.bloques[1].lista.map(([k,t])=>`<li class="ri"><b>${k}</b> ${t}</li>`).join('')}</ul><p class="dcierre ri">${c.personalizado.cierre}</p><a class="btn ri" href="#contacto">${c.personalizado.boton} <span aria-hidden="true">→</span></a></div>
   </div>
-  <div id="nombre3d" class="n3d-bloque"><div class="wrap n3d">
-    <div class="n3d-col">
-      <h2 class="reveal">${c.nombre3d.titulo}</h2>
-      <p class="lead reveal">${c.nombre3d.texto}</p>
-      <form class="n3d-form" novalidate>
+  <div id="nombre3d" class="n3d-bloque"><div class="wrap">
+    <form class="n3d-form n3d" novalidate>
+      <div class="n3d-intro">
+        <h2 class="reveal">${c.nombre3d.titulo}</h2>
+        <p class="lead reveal">${c.nombre3d.texto}</p>
         <label>${c.nombre3d.campo}<input name="nombre3d" autocomplete="given-name" autocapitalize="words" spellcheck="false" aria-describedby="n3d-ayuda n3d-msg"></label>
         <p id="n3d-ayuda" class="n3d-ayuda">${c.nombre3d.ayuda}</p>
         <p id="n3d-msg" class="n3d-msg" role="status" aria-live="polite"></p>
+      </div>
+      <canvas class="n3d-vista" role="img" aria-label="Vista previa 3D: llavero con tu nombre en relieve"></canvas>
+      <div class="n3d-controles">
         <fieldset class="n3d-campo-estilos"><legend>${c.nombre3d.modelo}</legend><div class="n3d-modelos"></div></fieldset>
         <fieldset class="n3d-campo-estilos"><legend>${c.nombre3d.estilo}</legend><div class="n3d-estilos"></div></fieldset>
         <div class="n3d-btns"><button class="btn" type="submit">${c.nombre3d.descargar}</button><span class="canal n3d-impreso">${c.nombre3d.impreso} · <small>Próximamente</small></span></div>
         <p class="mono n3d-medidas"></p>
         <p class="n3d-legal">${c.nombre3d.legal}</p>
-      </form>
-    </div>
-    <canvas class="n3d-vista" role="img" aria-label="Vista previa 3D: llavero con tu nombre en relieve"></canvas>
+      </div>
+    </form>
   </div></div></section>
   <section id="carpinteria" class="s alt"><div class="wrap">
     <span class="eyebrow">03 · Oficio</span><h2 class="reveal">${c.carpinteria.titulo}</h2>

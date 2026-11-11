@@ -16,7 +16,17 @@ const ALFABETO = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍ
 for (const id of FUENTES) {
   const f = fuentesChk[id], falta = ALFABETO.filter(ch => !f.glyphs[ch]);
   ok(!falta.length, id + ': tiene todas las letras permitidas ' + falta.join(''));
-  ok(f.copyright && /Open Font License/.test(f.licencia) && readFileSync(`public/licencias/llavero-${id}-OFL.txt`, 'utf8').includes('SIL OPEN FONT LICENSE'), id + ': créditos y OFL');
+  const lic = readFileSync(`public/licencias/llavero-${id}-OFL.txt`, 'utf8');
+  ok(f.copyright && /Open Font License/.test(f.licencia) && lic.includes('SIL OPEN FONT LICENSE'), id + ': créditos y OFL');
+  ok(lic.includes(f.copyright.slice(0, 40)), id + ': el copyright del JSON sale del OFL original');
+  const corte = lic.search(/This Font Software is licensed/i);
+  const cabeza = (corte < 0 ? lic : lic.slice(0, corte)).replace(/[ \t]*\n[ \t]*/g, ' ');
+  const rfn = [];
+  for (const m of cabeza.matchAll(/Reserved Font Names?\s+([^\n]+)/gi)) {
+    const q = [...m[1].matchAll(/["“«]([^"”»]+)["”»]/g)].map(x => x[1].trim());
+    if (q.length) rfn.push(...q); else { const u = m[1].replace(/^[, ]+/, '').replace(/\.$/, '').trim(); if (u) rfn.push(u); }
+  }
+  ok(rfn.every(n => !f.nombre.toLowerCase().includes(n.toLowerCase())), id + ': el subconjunto no usa nombre reservado ' + rfn.join(', '));
 }
 
 const TOPE_MS = +(process.env.TOPE_MS || 30000);
@@ -105,8 +115,14 @@ async function revisar(fid, nombre, verbose, modelo = 'letras') {
   const t = `${modelo} ${fid} ${nombre}: `;
   ok(piezas.size === 1 && res.cuerpos === 1, t + 'una sola pieza conectada');
   ok(abiertas === 0 && degenerados === 0, t + 'cerrado'); ok(malOrientadas === 0, t + 'normales consistentes');
-  ok(res.estado === 'NoError' && (modelo === 'letras' ? genero >= 1 : genero === 1), t + (modelo === 'letras' ? 'sólido válido con ojal' : 'sólido válido: género 1, solo el ojal, sin huecos en la base'));
+  const esperado = res.generoEsperado ?? (modelo === 'letras' ? 1 + (res.contadores || 0) : 1);
+  ok(res.estado === 'NoError' && genero === esperado && res.genero === esperado, t + `género exacto ${esperado} (stl ${genero}, manifold ${res.genero}, contadores de letra ${res.contadores || 0})`);
+  ok(res.altoLetraMin >= m.MEDIDAS.minimo - 1e-6, t + `alto de letra ≥ 10 mm (${res.altoLetraMin})`);
   ok(res.resistencia.cuellos, t + 'sin cuellos de menos de 1.2 mm entre letras');
+  if (nombre === 'Íñigo') {
+    ok(res.componentes >= res.componentesGlifo, t + `acentos distintos (${res.componentes} piezas tras reforzar, ${res.componentesGlifo} en el glifo)`);
+    if (res.componentesGlifo > 1) ok(res.separacionAcentos == null || res.separacionAcentos > 0.15, t + `la tilde o el punto no se funde con el cuerpo (hueco ${res.separacionAcentos} mm)`);
+  }
   ok(res.volumen > 0, t + 'volumen positivo');
   ok(res.engrosado <= 0.6 && res.perdida < 0.02, `${t}la fuente aguanta 1.2 mm sin recortes (engrosado ${res.engrosado}, recorte ${(res.perdida * 100).toFixed(1)} %)`);
   maxEngr[fid] = Math.max(maxEngr[fid] || 0, res.engrosado);
@@ -119,9 +135,9 @@ async function revisar(fid, nombre, verbose, modelo = 'letras') {
 const NOMBRES = ['Angel', 'Ángel', 'Nicole', 'Sofía', 'Andrea', 'Ginevra', 'Tommaso', 'Calkiní', 'Begoña', 'Íñigo', 'Iñigo', 'Lluvia', 'Ílce', 'Jazmín', 'Güero', 'Pingüino', 'ÑANDÚ', 'JUJÚ',
   'MARÍA', 'José', 'Jimena', 'Iji', 'jijiji', 'Lili', 'Itzel', 'Ximena', 'Zoé', 'Úrsula', 'Óscar', 'Élmer', 'Raúl', 'Ana', 'Bo', 'Ty',
   'i', 'j', 'l', 't', 'I', 'J', 'L', 'T', 'Ñ', 'ñ', 'ü', 'í', 'É', 'o', 'W', 'lt', 'tl', 'ij', 'ii', 'iiiiiiiiiiii', 'llllllllllll', 'tttttttttttt',
-  'Maximilianoo', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'ÑÑÑÑÑÑÑÑÑÑÑÑ', 'ÁÉÍÓÚÜÑáéíóú', 'Guadalupeñaz', 'NICOLE', 'ITZEL', 'ÓSCAR', 'BEGOÑA', 'MÜLLER'];
+  'Maximilianoo', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'LLLLLLLLLLLL', 'ÑÑÑÑÑÑÑÑÑÑÑÑ', 'ÁÉÍÓÚÜÑáéíóú', 'Guadalupeñaz', 'NICOLE', 'ITZEL', 'ÓSCAR', 'BEGOÑA', 'MÜLLER'];
 // los 4 modelos: todos los nombres con la fuente por defecto (Pacifico) y los casos difíciles con las 10 fuentes
-const DIFICILES = ['Angel', 'NICOLE', 'ITZEL', 'Calkiní', 'ÓSCAR', 'BEGOÑA', 'MÜLLER', 'Íñigo', 'Iñigo', 'Lluvia', 'Itzel', 'Jazmín', 'ÑANDÚ', 'i', 'j', 'l', 'I', 'J', 'Í', 'Ñ', 'iiiiiiiiiiii', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'Guadalupeñaz'];
+const DIFICILES = ['Angel', 'NICOLE', 'ITZEL', 'Calkiní', 'ÓSCAR', 'BEGOÑA', 'MÜLLER', 'Íñigo', 'Iñigo', 'Lluvia', 'Itzel', 'Jazmín', 'ÑANDÚ', 'i', 'j', 'l', 'I', 'J', 'Í', 'Ñ', 'iiiiiiiiiiii', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'LLLLLLLLLLLL', 'Guadalupeñaz'];
 let revisados = 0;
 for (const modelo of m.MODELOS) for (const fid of FUENTES) for (const s of (fid === 'script' ? NOMBRES : DIFICILES)) {
   ok(m.validarNombre(s).ok, 'nombre de prueba válido ' + s); await revisar(fid, s, fid === 'script' && ['Angel', 'Íñigo', 'i', 'WWWWWWWWWWWW', 'ÑANDÚ'].includes(s), modelo); revisados++;
@@ -140,9 +156,11 @@ ok(msg('Maximilianooo').startsWith('Máximo 12 letras. Prueba con tu apodo'), 'a
 ok(m.validarNombre('JoséMaríaLuz'.normalize('NFD')).ok, '12 letras con acentos combinados no cuentan doble');
 for (const s of ['François', 'Weiß', 'Àlex', 'Øyvind']) ok(msg(s) === 'Esa letra no está disponible. Usa letras del español.', 'letra no disponible: ' + s);
 for (const s of ['Ana!', 'José❤', '@ana']) ok(msg(s).startsWith('Sin símbolos'), 'símbolo: ' + s);
-const arch = ['I', 'i', 'Ñ', 'ñ', 'N', 'n', 'José', 'Jose'].map(m.archivoNombre);
-ok(new Set(arch).size === arch.length, 'nombres de archivo distintos: ' + arch.join(' '));
-ok(m.archivoNombre('Begon\u0303a') === 'camino-digital-Begoña.stl', 'archivo en NFC');
+ok(m.archivoNombre('Angel', 'hueso', 'script') === 'Angel-llavero-huesito-pacifico.stl', 'archivo Marketing: Angel + huesito + pacifico');
+ok(m.archivoNombre('José', 'fondo', 'moderna') === 'Jose-llavero-con-fondo-lobster-two.stl', 'archivo sin acentos, con-fondo y lobster-two');
+ok(m.archivoNombre('Íñigo', 'cuadros', 'tarde') === 'Inigo-llavero-cuadritos-merienda.stl', 'archivo cuadritos + merienda');
+ok(m.archivoNombre('Begon\u0303a', 'letras', 'script') === 'Begona-llavero-letras-pacifico.stl', 'archivo en NFC sin acentos');
+ok(m.archivoNombre('I', 'letras', 'script') !== m.archivoNombre('i', 'letras', 'script'), 'I e i no chocan');
 if (worker) { const w = worker; worker = null; await w.terminate(); }
 await vite.close();
 console.log(fallas ? `${fallas} fallas` : 'stlqa OK'); process.exit(fallas ? 1 : 0);

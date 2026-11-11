@@ -14,10 +14,14 @@ const MINIATURAS = {
   hueso: svg(`<g fill="${T}"><rect x="14" y="15" width="52" height="18"/><circle cx="12" cy="16" r="8"/><circle cx="12" cy="32" r="8"/><circle cx="68" cy="16" r="8"/><circle cx="68" cy="32" r="8"/></g><circle cx="10" cy="14" r="2.6" fill="#fff8ee"/>` + LET),
   cuadros: svg(`<g fill="${T}" stroke="${A}" stroke-width="1.6"><rect x="10" y="12" width="21" height="24" rx="3"/><rect x="30" y="12" width="21" height="24" rx="3"/><rect x="50" y="12" width="21" height="24" rx="3"/></g><circle cx="5" cy="24" r="4" fill="${T}"/><circle cx="5" cy="24" r="1.8" fill="#fff8ee"/><g font-family="Pacifico,cursive" font-size="15" fill="${A}" text-anchor="middle"><text x="20.5" y="30">A</text><text x="40.5" y="30">n</text><text x="60.5" y="30">a</text></g>`),
 };
-import '@fontsource/pacifico/latin-400.css'; import '@fontsource/lobster/latin-400.css'; import '@fontsource/lobster-two/latin-700.css';
-import '@fontsource/leckerli-one/latin-400.css'; import '@fontsource/kaushan-script/latin-400.css'; import '@fontsource/oleo-script/latin-700.css';
-import '@fontsource/sansita-swashed/latin-800.css'; import '@fontsource/courgette/latin-400.css'; import '@fontsource/grand-hotel/latin-400.css';
-import '@fontsource/merienda/latin-700.css';
+// las 10 fuentes del selector se cargan solo al abrir/usar el llavero (no en la carga inicial de la página)
+const cargarFuentesPicker = () => {
+  if (cargarFuentesPicker.ok) return; cargarFuentesPicker.ok = true;
+  import('@fontsource/pacifico/latin-400.css'); import('@fontsource/lobster/latin-400.css'); import('@fontsource/lobster-two/latin-700.css');
+  import('@fontsource/leckerli-one/latin-400.css'); import('@fontsource/kaushan-script/latin-400.css'); import('@fontsource/oleo-script/latin-700.css');
+  import('@fontsource/sansita-swashed/latin-800.css'); import('@fontsource/courgette/latin-400.css'); import('@fontsource/grand-hotel/latin-400.css');
+  import('@fontsource/merienda/latin-700.css');
+};
 
 // la geometría se calcula en un Worker (manifold-3d en wasm + contornos de la fuente elegida, cargados al pedirlos)
 let worker = null, sig = 0;
@@ -42,7 +46,7 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {}
   const medidas = root.querySelector('.n3d-medidas'), cv = root.querySelector('canvas'), boton = form.querySelector('button[type=submit]');
   // selector de estilo: cada opción muestra el nombre escrito en su fuente
   const selector = root.querySelector('.n3d-estilos');
-  selector.innerHTML = ESTILOS.map((e, i) => `<label class="n3d-estilo"><input type="radio" name="estilo" value="${e.id}"${i ? '' : ' checked'}><span class="sr">Estilo ${i + 1} de ${ESTILOS.length}: </span><span class="n3d-muestra" style="font-family:'${e.familia}',cursive;font-weight:${e.peso}"></span></label>`).join('');
+  selector.innerHTML = ESTILOS.map((e, i) => `<label class="n3d-estilo"><input type="radio" name="estilo" value="${e.id}"${i ? '' : ' checked'}><span class="sr">Estilo ${e.familia}, ${i + 1} de ${ESTILOS.length}</span><span class="n3d-muestra" style="font-family:'${e.familia}',cursive;font-weight:${e.peso}"></span></label>`).join('');
   const estilo = () => selector.querySelector('input:checked').value;
   // selector de modelo: miniatura dibujada (terracota = base, arena = letras/relieve) + nombre + nota
   const selModelo = root.querySelector('.n3d-modelos');
@@ -138,15 +142,19 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {}
     if (!v0.ok) { actualizar(); msg.textContent = v0.msg; input.focus(); return; }
     const v = await actualizar(); if (!v || !modelo) return;
     const blob = new Blob([exportarSTL(modelo)], { type: 'model/stl' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = archivoNombre(v.nombre);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = archivoNombre(v.nombre, tipo(), estilo());
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     msg.textContent = 'Listo: tu archivo se descargó.'; msg.classList.remove('pista'); msg.classList.add('ok');
   });
   input.maxLength = 40; // tope amplio solo contra pegados enormes; el límite de 12 lo avisa validarNombre
   input.value = inicial; boton.disabled = true; pintarMuestras();
-  // el primer cálculo (y la descarga del motor) espera a que la sección esté cerca
-  new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) { iniciar(); render(); arrancar(); if (!listo) { listo = true; actualizar(); } } }, { rootMargin: '600px 0px' }).observe(cv);
-  input.addEventListener('focus', () => { if (!listo) { listo = true; actualizar(); } });
+  // el renderer puede prepararse un poco antes; las fuentes web, el JSON y el wasm esperan a que la sección se use
+  new IntersectionObserver(es => { if (es[0].isIntersecting) iniciar(); }, { rootMargin: '600px 0px' }).observe(cv);
+  const abrir = () => { visible = true; cargarFuentesPicker(); iniciar(); render(); arrancar(); if (!listo) { listo = true; actualizar(); } };
+  new IntersectionObserver(es => { if (es[0].isIntersecting) abrir(); }, { rootMargin: '80px 0px' }).observe(root);
+  input.addEventListener('focus', abrir);
+  selector.addEventListener('pointerdown', abrir, { once: true });
+  selModelo.addEventListener('pointerdown', abrir, { once: true });
   addEventListener('resize', redimensionar);
   return { actualizar, get modelo() { return modelo; } };
 }

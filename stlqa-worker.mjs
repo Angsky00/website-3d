@@ -27,6 +27,8 @@ parentPort.on('message', msg => {
       t: 'res', cabe: true, modelo: mod.modelo, mayuscula: mod.mayuscula, medidas: mod.medidas,
       cuerpos: mod.cuerpos, resistencia: mod.resistencia, estado: mod.estado, genero: mod.genero,
       volumen: mod.volumen, engrosado: mod.engrosado, perdida: mod.perdida, stl: stl.buffer, ms,
+      contadores: mod.contadores, generoEsperado: mod.generoEsperado, altoLetraMin: mod.altoLetraMin,
+      componentes: mod.componentes, componentesGlifo: mod.componentesGlifo, separacionAcentos: mod.separacionAcentos,
     }, [stl.buffer]);
   } catch (e) {
     parentPort.postMessage({ t: 'res', error: String(e && e.stack || e) });
