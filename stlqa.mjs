@@ -1,5 +1,7 @@
 // QA del llavero «Tu nombre en 3D»: validación, fuentes y licencias, y STL binario de una sola pieza cerrada con ojal, en mm.
+// Cada caso corre en un worker_threads (manifold se carga una vez). Si se pasa de TOPE_MS (30 s por defecto), se mata el worker, se anota la falla y se sigue.
 import { createServer } from 'vite';
+import { Worker } from 'node:worker_threads';
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 const m = await vite.ssrLoadModule('/src/nombre3d.js');
 let fallas = 0; const ok = (c, t) => { if (!c) { fallas++; console.log('FALLA', t); } };
@@ -8,28 +10,77 @@ for (const s of ['', '  ', 'Ana2', 'R2D2', 'Ana!', 'Jo-sé', 'Ana María', 'Jos�
 ok(m.validarNombre('Jose\u0301').ok && m.validarNombre('Jose\u0301').nombre === 'José', 'normaliza acento combinado');
 
 import { readFileSync, readdirSync } from 'node:fs';
-const w = await m.cargarManifold();
 const FUENTES = readdirSync('src/fuentes-llavero').map(f => f.replace('.json', '')).sort();
-const fuentes = Object.fromEntries(FUENTES.map(id => [id, JSON.parse(readFileSync(`src/fuentes-llavero/${id}.json`, 'utf8'))]));
+const fuentesChk = Object.fromEntries(FUENTES.map(id => [id, JSON.parse(readFileSync(`src/fuentes-llavero/${id}.json`, 'utf8'))]));
 const ALFABETO = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ'];
 for (const id of FUENTES) {
-  const f = fuentes[id], falta = ALFABETO.filter(ch => !f.glyphs[ch]);
+  const f = fuentesChk[id], falta = ALFABETO.filter(ch => !f.glyphs[ch]);
   ok(!falta.length, id + ': tiene todas las letras permitidas ' + falta.join(''));
   ok(f.copyright && /Open Font License/.test(f.licencia) && readFileSync(`public/licencias/llavero-${id}-OFL.txt`, 'utf8').includes('SIL OPEN FONT LICENSE'), id + ': créditos y OFL');
+}
+
+const TOPE_MS = +(process.env.TOPE_MS || 30000);
+let worker = null, listo = null;
+
+function arrancar() {
+  const w = new Worker(new URL('./stlqa-worker.mjs', import.meta.url));
+  worker = w;
+  listo = new Promise((resolve, reject) => {
+    const on = msg => { if (msg.t === 'listo') { w.off('message', on); resolve(); } };
+    w.on('message', on);
+    w.once('error', reject);
+  });
+  return listo;
+}
+
+async function pedir(fid, nombre, modelo, verbose) {
+  if (!worker) await arrancar();
+  else await listo;
+  return new Promise(resolve => {
+    let hecho = false;
+    const tope = setTimeout(() => {
+      if (hecho) return;
+      hecho = true;
+      const w = worker; worker = null; listo = null;
+      w.terminate();
+      fallas++;
+      console.log('FALLA', `tiempo excedido ${modelo} ${fid} ${nombre} >${TOPE_MS / 1000} s`);
+      resolve(null);
+    }, TOPE_MS);
+    const onMsg = msg => {
+      if (hecho || msg.t !== 'res') return;
+      hecho = true; clearTimeout(tope); worker.off('message', onMsg);
+      resolve(msg);
+    };
+    const onErr = err => {
+      if (hecho) return;
+      hecho = true; clearTimeout(tope);
+      const w = worker; worker = null; listo = null;
+      try { w.terminate(); } catch {}
+      fallas++;
+      console.log('FALLA', `${modelo} ${fid} ${nombre}: worker ${err && err.message || err}`);
+      resolve(null);
+    };
+    worker.on('message', onMsg);
+    worker.once('error', onErr);
+    worker.postMessage({ fid, nombre, modelo, verbose, lento: process.env.LENTO });
+  });
 }
 
 // STL binario → cerrado (cada arista no dirigida exactamente en 2 caras, sentidos opuestos), UNA sola pieza conectada
 // por aristas (no basta tocarse en un vértice), apoyada en z = 0, con el agujero del ojal (género ≥ 1) y medidas en mm
 const maxEngr = {}, noCaben = [];
-function revisar(fid, nombre, verbose, modelo = 'letras') {
-  const t0 = Date.now(); const mod = m.construirLlavero(w, fuentes[fid], nombre, modelo); if (process.env.LENTO && Date.now() - t0 > +process.env.LENTO) console.log('LENTO', modelo, fid, nombre, Date.now() - t0, 'ms');
-  ok(mod.modelo === modelo, `${modelo} ${fid} ${nombre}: modelo pedido`);
-  if (!mod.cabe) { // no cabe con letras de 10 mm: debe ser de verdad más ancho que la cama, y no trae geometría
-    ok(mod.medidas.ancho > m.MEDIDAS.anchoMax && !mod.geometria, `${modelo} ${fid} ${nombre}: no cabe a 10 mm (${mod.medidas.ancho} mm) y se bloquea`);
+async function revisar(fid, nombre, verbose, modelo = 'letras') {
+  const res = await pedir(fid, nombre, modelo, verbose);
+  if (!res) return null;
+  if (res.error) { ok(false, `${modelo} ${fid} ${nombre}: ${res.error}`); return null; }
+  ok(res.modelo === modelo, `${modelo} ${fid} ${nombre}: modelo pedido`);
+  if (!res.cabe) { // no cabe con letras de 10 mm: debe ser de verdad más ancho que la cama, y no trae geometría
+    ok(res.medidas.ancho > m.MEDIDAS.anchoMax && !res.stl, `${modelo} ${fid} ${nombre}: no cabe a 10 mm (${res.medidas.ancho} mm) y se bloquea`);
     noCaben.push(`${modelo}/${fid}/${nombre}`); return null;
   }
-  ok(mod.mayuscula >= m.MEDIDAS.minimo - 1e-6, `${modelo} ${fid} ${nombre}: letras de al menos 10 mm (${mod.mayuscula})`);
-  const dv = m.exportarSTL(mod), n = dv.getUint32(80, true);
+  ok(res.mayuscula >= m.MEDIDAS.minimo - 1e-6, `${modelo} ${fid} ${nombre}: letras de al menos 10 mm (${res.mayuscula})`);
+  const dv = new DataView(res.stl), n = dv.getUint32(80, true);
   ok(dv.byteLength === 84 + n * 50, `${modelo} ${fid} ${nombre}: tamaño binario coherente`);
   const key = o => [dv.getFloat32(o, true), dv.getFloat32(o + 4, true), dv.getFloat32(o + 8, true)].map(v => Math.round(v * 1e4)).join(',');
   const edges = new Map(), verts = new Set(), par = [...Array(n).keys()];
@@ -50,17 +101,17 @@ function revisar(fid, nombre, verbose, modelo = 'letras') {
   const piezas = new Set(); for (let i = 0; i < n; i++) piezas.add(f(i));
   const F = n - degenerados, genero = (2 - (verts.size - edges.size + F)) / 2;
   const W = maxX - minX, H = maxY - minY, Z = maxZ - minZ;
-  if (verbose || abiertas || degenerados) console.log(`${fid.padEnd(8)}${nombre.padEnd(14)}${String(n).padStart(6)} tri · ${W.toFixed(1)} × ${H.toFixed(1)} × ${Z.toFixed(1)} mm · piezas ${piezas.size} · género ${genero} · abiertas ${abiertas} · mal orientadas ${malOrientadas} · degenerados ${degenerados} · cuerpos ${mod.cuerpos}`);
+  if (verbose || abiertas || degenerados) console.log(`${fid.padEnd(8)}${nombre.padEnd(14)}${String(n).padStart(6)} tri · ${W.toFixed(1)} × ${H.toFixed(1)} × ${Z.toFixed(1)} mm · piezas ${piezas.size} · género ${genero} · abiertas ${abiertas} · mal orientadas ${malOrientadas} · degenerados ${degenerados} · cuerpos ${res.cuerpos}`);
   const t = `${modelo} ${fid} ${nombre}: `;
-  ok(piezas.size === 1 && mod.cuerpos === 1, t + 'una sola pieza conectada');
+  ok(piezas.size === 1 && res.cuerpos === 1, t + 'una sola pieza conectada');
   ok(abiertas === 0 && degenerados === 0, t + 'cerrado'); ok(malOrientadas === 0, t + 'normales consistentes');
-  ok(mod.estado === 'NoError' && (modelo === 'letras' ? genero >= 1 : genero === 1), t + (modelo === 'letras' ? 'sólido válido con ojal' : 'sólido válido: género 1, solo el ojal, sin huecos en la base'));
-  ok(mod.resistencia.cuellos, t + 'sin cuellos de menos de 1.2 mm entre letras');
-  ok(mod.volumen > 0, t + 'volumen positivo');
-  ok(mod.engrosado <= 0.6 && mod.perdida < 0.02, `${t}la fuente aguanta 1.2 mm sin recortes (engrosado ${mod.engrosado}, recorte ${(mod.perdida * 100).toFixed(1)} %)`);
-  maxEngr[fid] = Math.max(maxEngr[fid] || 0, mod.engrosado);
-  const r = mod.resistencia; ok(r.trazos, t + 'trazos ≥ 1.2 mm'); ok(r.puentes, t + 'puentes ≥ 1.2 mm'); ok(r.ojal && r.agujero >= 4 && r.pared >= 2, t + 'ojal ≥ 4 mm con pared ≥ 2 mm');
-  ok(Math.abs(minZ) < 1e-3, t + 'apoya en z = 0'); ok(Math.abs(Z - mod.medidas.grueso) < 0.06 && Math.abs(Z - 4.6) < 1e-3, t + 'grueso 4.6 mm');
+  ok(res.estado === 'NoError' && (modelo === 'letras' ? genero >= 1 : genero === 1), t + (modelo === 'letras' ? 'sólido válido con ojal' : 'sólido válido: género 1, solo el ojal, sin huecos en la base'));
+  ok(res.resistencia.cuellos, t + 'sin cuellos de menos de 1.2 mm entre letras');
+  ok(res.volumen > 0, t + 'volumen positivo');
+  ok(res.engrosado <= 0.6 && res.perdida < 0.02, `${t}la fuente aguanta 1.2 mm sin recortes (engrosado ${res.engrosado}, recorte ${(res.perdida * 100).toFixed(1)} %)`);
+  maxEngr[fid] = Math.max(maxEngr[fid] || 0, res.engrosado);
+  const r = res.resistencia; ok(r.trazos, t + 'trazos ≥ 1.2 mm'); ok(r.puentes, t + 'puentes ≥ 1.2 mm'); ok(r.ojal && r.agujero >= 4 && r.pared >= 2, t + 'ojal ≥ 4 mm con pared ≥ 2 mm');
+  ok(Math.abs(minZ) < 1e-3, t + 'apoya en z = 0'); ok(Math.abs(Z - res.medidas.grueso) < 0.06 && Math.abs(Z - 4.6) < 1e-3, t + 'grueso 4.6 mm');
   ok(W <= m.MEDIDAS.anchoMax + 0.01 && W >= 12 && H >= 8 && H <= 55, t + 'medidas razonables en mm');
   return { W, H };
 }
@@ -73,9 +124,12 @@ const NOMBRES = ['Angel', 'Ángel', 'Nicole', 'Sofía', 'Andrea', 'Ginevra', 'To
 const DIFICILES = ['Angel', 'NICOLE', 'ITZEL', 'Calkiní', 'ÓSCAR', 'BEGOÑA', 'MÜLLER', 'Íñigo', 'Iñigo', 'Lluvia', 'Itzel', 'Jazmín', 'ÑANDÚ', 'i', 'j', 'l', 'I', 'J', 'Í', 'Ñ', 'iiiiiiiiiiii', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'Guadalupeñaz'];
 let revisados = 0;
 for (const modelo of m.MODELOS) for (const fid of FUENTES) for (const s of (fid === 'script' ? NOMBRES : DIFICILES)) {
-  ok(m.validarNombre(s).ok, 'nombre de prueba válido ' + s); revisar(fid, s, fid === 'script' && ['Angel', 'Íñigo', 'i', 'WWWWWWWWWWWW', 'ÑANDÚ'].includes(s), modelo); revisados++;
+  ok(m.validarNombre(s).ok, 'nombre de prueba válido ' + s); await revisar(fid, s, fid === 'script' && ['Angel', 'Íñigo', 'i', 'WWWWWWWWWWWW', 'ÑANDÚ'].includes(s), modelo); revisados++;
 }
-for (const mo of m.MODELOS) for (const fid of FUENTES) ok(m.construirLlavero(w, fuentes[fid], 'Angel', mo).cabe, `«Angel» cabe en ${mo} con ${fid}`);
+for (const mo of m.MODELOS) for (const fid of FUENTES) {
+  const r = await pedir(fid, 'Angel', mo, false);
+  ok(r && r.cabe, `«Angel» cabe en ${mo} con ${fid}`);
+}
 console.log(`no caben a 10 mm (aviso y descarga bloqueada): ${noCaben.length}`, noCaben.filter(x => x.includes('/script/')).join(' '));
 console.log('engrosado máximo por fuente (mm)', JSON.stringify(maxEngr));
 console.log(`revisados ${revisados} llaveros: ${m.MODELOS.length} modelos × (${NOMBRES.length} nombres con Pacifico + ${DIFICILES.length} difíciles × ${FUENTES.length - 1} fuentes)`);
@@ -89,5 +143,6 @@ for (const s of ['Ana!', 'José❤', '@ana']) ok(msg(s).startsWith('Sin símbolo
 const arch = ['I', 'i', 'Ñ', 'ñ', 'N', 'n', 'José', 'Jose'].map(m.archivoNombre);
 ok(new Set(arch).size === arch.length, 'nombres de archivo distintos: ' + arch.join(' '));
 ok(m.archivoNombre('Begon\u0303a') === 'camino-digital-Begoña.stl', 'archivo en NFC');
+if (worker) { const w = worker; worker = null; await w.terminate(); }
 await vite.close();
 console.log(fallas ? `${fallas} fallas` : 'stlqa OK'); process.exit(fallas ? 1 : 0);

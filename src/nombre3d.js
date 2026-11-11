@@ -171,7 +171,11 @@ function armar(w, fuente, nombre, modelo, m, escala) {
         // hueso: barra con margen alrededor del nombre y dos bolas en cada punta; el ojal va en la bola de arriba a la izquierda
         const mg = 3, x0 = lb.min[0] - mg, x1 = lb.max[0] + mg, y0 = lb.min[1] - mg, y1 = lb.max[1] + mg, h = y1 - y0, yc = (y0 + y1) / 2;
         const rb = Math.max(R + 1.2, h * 0.36), dy = h * 0.36, kx0 = x0 - rb * 0.3, kx1 = x1 + rb * 0.3;
-        const barra = G(G(CrossSection.square([x1 - x0, h * 0.8])).translate([x0, yc - h * 0.4]));
+        // la barra cubre tildes, virgulillas y descendentes con 1.6 mm de margen: el 80 % del alto
+        // no alcanza cuando el nombre es alto (p. ej. Íñigo con g), y un recorte fino deja triángulos degenerados
+        const cubre = 1.6;
+        const by0 = Math.min(yc - h * 0.4, lb.min[1] - cubre), by1 = Math.max(yc + h * 0.4, lb.max[1] + cubre);
+        const barra = G(G(CrossSection.square([x1 - x0, by1 - by0])).translate([x0, by0]));
         base = G(CrossSection.union([barra, circulo(rb, [kx0, yc + dy]), circulo(rb, [kx0, yc - dy]), circulo(rb, [kx1, yc + dy]), circulo(rb, [kx1, yc - dy])]));
         base = G(G(base.offset(1, 'Round', 2, seg)).offset(-1, 'Round', 2, seg)); // redondea la unión barra–bolas
         ojal = { cx: kx0 - rb * 0.15, cy: yc + dy + rb * 0.1 };
