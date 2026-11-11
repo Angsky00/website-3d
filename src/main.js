@@ -56,6 +56,8 @@ document.querySelector('#app').innerHTML = `
         <label>${c.nombre3d.campo}<input name="nombre3d" autocomplete="given-name" autocapitalize="words" spellcheck="false" aria-describedby="n3d-ayuda n3d-msg"></label>
         <p id="n3d-ayuda" class="n3d-ayuda">${c.nombre3d.ayuda}</p>
         <p id="n3d-msg" class="n3d-msg" role="status" aria-live="polite"></p>
+        <fieldset class="n3d-campo-estilos"><legend>${c.nombre3d.modelo}</legend><div class="n3d-modelos"></div></fieldset>
+        <fieldset class="n3d-campo-estilos"><legend>${c.nombre3d.estilo}</legend><div class="n3d-estilos"></div></fieldset>
         <div class="n3d-btns"><button class="btn" type="submit">${c.nombre3d.descargar}</button><span class="canal n3d-impreso">${c.nombre3d.impreso} · <small>Próximamente</small></span></div>
         <p class="mono n3d-medidas"></p>
         <p class="n3d-legal">${c.nombre3d.legal}</p>

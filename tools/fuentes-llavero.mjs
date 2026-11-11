@@ -1,11 +1,21 @@
 // Genera src/fuentes-llavero/<id>.json: contornos ya aplanados (unidades de 1000 por em) de solo las letras permitidas,
-// para las fuentes candidatas del llavero. Todas son SIL OFL 1.1 sin nombre reservado; aun así los subconjuntos llevan
-// nombre propio y la licencia de cada una se publica en public/licencias/. Uso: node tools/fuentes-llavero.mjs
+// para las fuentes del llavero. Todas son SIL OFL 1.1; varias declaran nombre reservado (Lobster, Leckerli, Kaushan Script,
+// Oleo, Courgette, Grand Hotel), así que los subconjuntos modificados llevan nombres propios neutros que no contienen
+// ninguno, y la licencia de cada una se publica en public/licencias/. Uso: node tools/fuentes-llavero.mjs
 import opentype from 'opentype.js';
 import { readFileSync, writeFileSync } from 'fs';
 const LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÜÑáéíóúüñ';
 export const FUENTES = [
   { id: 'script', nombre: 'Llavero Script', origen: 'Pacifico 400', pkg: 'pacifico', file: 'pacifico-latin-400-normal.woff' },
+  { id: 'retro', nombre: 'Llavero Retro', origen: 'Lobster 400', pkg: 'lobster', file: 'lobster-latin-400-normal.woff' },
+  { id: 'moderna', nombre: 'Llavero Moderna', origen: 'Lobster Two Bold 700', pkg: 'lobster-two', file: 'lobster-two-latin-700-normal.woff' },
+  { id: 'dulce', nombre: 'Llavero Dulce', origen: 'Leckerli One 400', pkg: 'leckerli-one', file: 'leckerli-one-latin-400-normal.woff' },
+  { id: 'pincel', nombre: 'Llavero Pincel', origen: 'Kaushan Script 400', pkg: 'kaushan-script', file: 'kaushan-script-latin-400-normal.woff' },
+  { id: 'brocha', nombre: 'Llavero Brocha', origen: 'Oleo Script Bold 700', pkg: 'oleo-script', file: 'oleo-script-latin-700-normal.woff' },
+  { id: 'floreada', nombre: 'Llavero Floreada', origen: 'Sansita Swashed ExtraBold 800', pkg: 'sansita-swashed', file: 'sansita-swashed-latin-800-normal.woff' },
+  { id: 'cursiva', nombre: 'Llavero Cursiva', origen: 'Courgette 400', pkg: 'courgette', file: 'courgette-latin-400-normal.woff' },
+  { id: 'vintage', nombre: 'Llavero Vintage', origen: 'Grand Hotel 400', pkg: 'grand-hotel', file: 'grand-hotel-latin-400-normal.woff' },
+  { id: 'tarde', nombre: 'Llavero Tarde', origen: 'Merienda Bold 700', pkg: 'merienda', file: 'merienda-latin-700-normal.woff' },
 ];
 const SEG_Q = 6, SEG_C = 8;
 for (const f of FUENTES) {
@@ -32,7 +42,7 @@ for (const f of FUENTES) {
   for (const a of LETRAS) for (const b of LETRAS) { const v = font.getKerningValue(font.charToGlyph(a), font.charToGlyph(b)); if (v) kern[a + b] = r(v); }
   const lic = readFileSync(`node_modules/@fontsource/${f.pkg}/LICENSE`, 'utf8');
   const copyright = lic.split('\n')[0].trim();
-  writeFileSync(`src/fuentes-llavero/${f.id}.json`, JSON.stringify({ nombre: f.nombre, origen: f.origen, copyright, licencia: 'SIL Open Font License 1.1; ver licencias/llavero-' + f.id + '-OFL.txt en el sitio', capHeight: r(font.tables.os2.sCapHeight || 700), glyphs, kern }));
+  writeFileSync(`src/fuentes-llavero/${f.id}.json`, JSON.stringify({ nombre: f.nombre, origen: f.origen, copyright, licencia: 'SIL Open Font License 1.1; ver licencias/llavero-' + f.id + '-OFL.txt en el sitio', capHeight: Math.max(...glyphs.H.c.flatMap(c => c.filter((_, i) => i % 2))), glyphs, kern }));
   writeFileSync(`public/licencias/llavero-${f.id}-OFL.txt`, `«${f.nombre}» es una versión modificada de ${f.origen}: un subconjunto con las letras A–Z, a–z, Á É Í Ó Ú Ü Ñ y á é í ó ú ü ñ,\nconvertido a contornos para generar los llaveros de «Tu nombre en 3D» de Camino Digital.\n\n` + lic);
   console.log(f.id, Object.keys(glyphs).length, 'letras', Object.keys(kern).length, 'pares de kerning', JSON.stringify(glyphs).length, 'bytes');
 }

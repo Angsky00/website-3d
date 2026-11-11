@@ -6,9 +6,9 @@ import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 
 export const MAX = 12;
 const LETRA = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+$/;
-// mm, pensadas para la K1C. mayuscula: alto de las mayúsculas. contorno: cuánto sobresale el respaldo de las letras.
+// mm, pensadas para la K1C. mayuscula: alto de las mayúsculas (minimo: lo menos que se reduce para caber en anchoMax). contorno: cuánto sobresale el respaldo de las letras.
 // cierre: además del contorno, cierra huecos de hasta 2 × (contorno + cierre) entre letras, puntos y tildes sin engordar el borde.
-export const MEDIDAS = { mayuscula: 15, respaldo: 3, relieve: 1.6, contorno: 2, cierre: 1.6, engrosar: 0.3, agujero: 4.6, pared: 2.4, anchoMax: 150, segmentos: 32 };
+export const MEDIDAS = { mayuscula: 15, minimo: 10, respaldo: 3, relieve: 1.6, contorno: 2, cierre: 1.6, engrosar: 0.3, agujero: 4.6, pared: 2.4, anchoMax: 150, segmentos: 32 };
 
 export function validarNombre(raw) {
   const s = (raw ?? '').normalize('NFC').trim();
@@ -45,60 +45,164 @@ function contornosNombre(fuente, nombre) {
   return { polys: out, primera };
 }
 
-// Devuelve { geometria (THREE.BufferGeometry indexada), medidas, cuerpos } y libera la memoria de wasm
-export function construirLlavero(w, fuente, nombre, m = MEDIDAS) {
+export const MODELOS = ['letras', 'fondo', 'hueso', 'cuadros'];
+
+// Devuelve { geometria (THREE.BufferGeometry indexada), medidas, cuerpos, resistencia… } y libera la memoria de wasm.
+// modelo: 'letras' (solo letras fundidas entre sí, sin base), 'fondo' (letras sobre base redondeada),
+// 'hueso' (letras sobre un hueso) o 'cuadros' (cada letra en su cuadro con marco en relieve).
+// Todos se arman igual: una huella «base» (z 0 → respaldo) y un «relieve» encima que cae dentro de la base,
+// fundidos con una unión booleana real ⇒ un único sólido cerrado.
+export function construirLlavero(w, fuente, nombre, modelo = 'fondo', m = MEDIDAS) {
+  if (!MODELOS.includes(modelo)) throw new Error('modelo desconocido: ' + modelo);
+  // si no cabe en anchoMax se reduce todo menos el grosor y el ojal, pero nunca por debajo de minimo (mm de mayúscula):
+  // si ni así cabe, se devuelve { cabe: false } sin geometría y la interfaz bloquea la descarga
+  // en «cuadros» cada letra se ajusta a su cuadro: lo que debe medir al menos minimo es el interior del cuadro
+  const interior = e => modelo === 'cuadros' ? 21 * e - 2 * (1.6 + 1.2) - 1.6 : m.mayuscula * e;
+  const piso = modelo === 'cuadros' ? (m.minimo + 2 * (1.6 + 1.2) + 1.6) / 21 : m.minimo / m.mayuscula;
+  // estimación rápida del ancho (sin booleanas) con cotas por abajo de lo que suman ojal, contorno o bolas:
+  // descarta de inmediato lo que no cabe ni al mínimo y arranca cerca de la escala buena
+  const ri = m.agujero / 2, R = ri + m.pared, ojal = ri + 2 + R;
+  const n = [...nombre].length, { polys } = contornosNombre(fuente, nombre);
+  let x0 = Infinity, x1 = -Infinity; for (const pl of polys) for (const [x] of pl) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+  const crudo = (x1 - x0) * m.mayuscula / fuente.capHeight;
+  const extra = { letras: ojal, fondo: ojal + 2 * m.contorno, hueso: 6 + 2 * 1.3 * (R + 1.2), cuadros: ojal }[modelo];
+  const estimar = e => modelo === 'cuadros' ? n * (21 * e - 1.6) + 1.6 + extra : crudo * e + extra;
+  if (estimar(piso) > m.anchoMax + 1) return { cabe: false, modelo, medidas: { ancho: Math.round(estimar(piso) * 10) / 10 } };
+  let escala = Math.max(piso, Math.min(1, estimar(1) > m.anchoMax ? (modelo === 'cuadros' ? ((m.anchoMax - extra - 1.6) / n + 1.6) / 21 : (m.anchoMax - extra) / crudo) : 1)), r = null;
+  for (let i = 0; i < 5; i++) {
+    r = armar(w, fuente, nombre, modelo, m, escala);
+    if (r.medidas.ancho <= m.anchoMax) return { ...r, cabe: true, mayuscula: Math.round(interior(escala) * 10) / 10 };
+    r.geometria.dispose();
+    if (escala <= piso) break;
+    const sobra = r.ojalAncho; escala = Math.max(piso, escala * ((m.anchoMax - sobra) / (r.medidas.ancho - sobra)) * 0.995);
+  }
+  return { cabe: false, modelo, medidas: r.medidas };
+}
+
+const areaFirmada = p => { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j][0] - p[i][0]) * (p[j][1] + p[i][1]); return a / 2; };
+
+function armar(w, fuente, nombre, modelo, m, escala) {
   const { CrossSection, Manifold } = w, basura = [], G = x => (basura.push(x), x);
-  try {
-    const { polys, primera } = contornosNombre(fuente, nombre);
-    let s = m.mayuscula / fuente.capHeight;
-    const esc = ps => ps.map(p => p.map(([x, y]) => [x * s, y * s]));
-    let L = G(new CrossSection(esc(polys), 'NonZero'));
-    // si no cabe, se reduce la escala (sin bajar el grosor del respaldo ni el ojal)
-    const ojalAncho = m.agujero + 2 * m.pared;
-    const b0 = L.bounds(), ancho0 = b0.max[0] - b0.min[0] + 2 * m.contorno + ojalAncho;
-    if (ancho0 > m.anchoMax) { s *= (m.anchoMax - 2 * m.contorno - ojalAncho) / (b0.max[0] - b0.min[0]); L = G(new CrossSection(esc(polys), 'NonZero')); }
-    // engrosado (estilo «burbuja») y apertura morfológica de 0.6 mm: lo que queda de las letras es unión de discos
-    // de 1.2 mm, así que ningún trazo, tilde o virgulilla mide menos de 1.2 mm. Se engrosa de 0.1 en 0.1 mm hasta que
-    // la apertura casi no recorte (< 2 % del área), para no perder detalle de la letra.
-    const seg = m.segmentos, abrir = c => G(G(c.offset(-0.6, 'Round', 2, seg)).offset(0.6, 'Round', 2, seg));
-    const L0 = L; let engrosado = m.engrosar;
-    for (;;) {
-      const g = G(L0.offset(engrosado, 'Round', 2, seg)); L = abrir(g);
-      if (L.area() >= g.area() * 0.98 || engrosado >= 0.8) break;
-      engrosado = Math.round((engrosado + 0.1) * 10) / 10;
+  const seg = m.segmentos, circulo = (rad, c) => G(CrossSection.circle(rad, seg).translate(c));
+  const abrir = c => G(G(c.offset(-0.6, 'Round', 2, seg)).offset(0.6, 'Round', 2, seg));
+  // engrosado (estilo «burbuja») y apertura de 0.6 mm: las letras quedan como unión de discos de 1.2 mm, así que ningún
+  // trazo, tilde o virgulilla mide menos de 1.2 mm. Se engrosa de 0.1 en 0.1 mm hasta que la apertura casi no recorte
+  // (< 2 % del área): una fuente que necesite más de 0.6 mm no aguanta y no se usa (lo revisa stlqa).
+  let engrosado = m.engrosar, perdida = 0;
+  const reforzar = L0 => {
+    let L; L0 = G(L0.simplify(0.02)); // las curvas de la fuente traen vértices de sobra: las booleanas se vuelven lentas
+    for (engrosado = m.engrosar; ; engrosado = Math.round((engrosado + 0.1) * 10) / 10) {
+      const g = G(L0.offset(engrosado, 'Round', 2, seg)); L = abrir(g); perdida = 1 - L.area() / g.area();
+      // cierre de 0.8 mm y otra apertura de 0.6: dos letras que se tocan en un punto quedan unidas por un cuello de verdad, y lo que el cierre unió con un cuello fino vuelve a separarse (lo une la base)
+      if (perdida < 0.02 || engrosado >= 0.8) return G(sinCuellos(abrir(G(G(L.offset(0.8, 'Round', 2, seg)).offset(-0.8, 'Round', 2, seg)))).simplify(0.01));
     }
-    // respaldo: contorno + cierre morfológico (ensancha y vuelve a encoger) para unir letras, puntos y tildes
-    let B = G(G(L.offset(m.contorno + m.cierre, 'Round', 2, seg)).offset(-m.cierre, 'Round', 2, seg));
+  };
+  // cuellos: donde dos discos de 1.2 mm apenas se tocan, el núcleo (erosión de 0.6) de una misma pieza se parte;
+  // se unen esos núcleos con una cápsula de 1.2 mm de ancho, así el cuello más angosto mide al menos 1.2 mm
+  const sinCuellos = L => {
+    for (let vuelta = 0; vuelta < 40; vuelta++) {
+      const caps = [];
+      for (const c of L.decompose().map(G)) {
+        const E = G(c.offset(-0.6, 'Round', 2, seg)).decompose().map(G).filter(e => e.area() > 1e-3);
+        if (E.length < 2) continue;
+        E.sort((a, b) => b.area() - a.area());
+        const pts = E.map(e => G(e.simplify(0.05)).toPolygons().flat());
+        for (let i = 1; i < pts.length; i++) {
+          let best = null;
+          for (const p of pts[i]) for (let j = 0; j < i; j++) for (const q of pts[j]) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (!best || d < best.d) best = { d, p, q }; }
+          caps.push(G(CrossSection.hull([circulo(0.62, best.p), circulo(0.62, best.q)])));
+        }
+      }
+      if (!caps.length) return L;
+      L = G(CrossSection.union([L, ...caps]));
+    }
+    return L;
+  };
+  // une lo que haya quedado suelto con un puente redondeado al punto más cercano de la pieza mayor
+  let puentes = 0;
+  const unir = (B, radio) => {
     let partes = B.decompose(); partes.forEach(G);
-    // respaldo de seguridad: si algo quedó suelto, puente redondeado al punto más cercano del resto
-    let puentes = 0;
-    while (partes.length > 1 && puentes < 20) {
-      const pts = partes.map(c => c.toPolygons().flat());
+    while (partes.length > 1 && puentes < 30) {
       partes.sort((a, b) => b.area() - a.area());
-      const ptsOrden = partes.map(c => c.toPolygons().flat());
+      const pts = partes.map(c => c.toPolygons().flat());
       let best = null;
-      for (let i = 1; i < ptsOrden.length; i++) for (const p of ptsOrden[i]) for (const q of ptsOrden[0]) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (!best || d < best.d) best = { d, p, q }; }
-      const r = m.contorno * 0.9;
-      const puente = G(CrossSection.hull([G(CrossSection.circle(r, seg).translate(best.p)), G(CrossSection.circle(r, seg).translate(best.q))]));
+      for (let i = 1; i < pts.length; i++) for (const p of pts[i]) for (const q of pts[0]) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (!best || d < best.d) best = { d, p, q }; }
+      const puente = G(CrossSection.hull([circulo(radio, best.p), circulo(radio, best.q)]));
       B = G(CrossSection.union([B, puente])); partes = B.decompose(); partes.forEach(G); puentes++;
-      void pts;
     }
-    // ojal a la izquierda de la primera letra, a la altura de su punto más a la izquierda
-    const P = esc(primera).flat(); let izq = P[0]; for (const p of P) if (p[0] < izq[0]) izq = p;
-    const lb = L.bounds(), ri = m.agujero / 2, R = ri + m.pared;
-    const cy = Math.min(Math.max(izq[1], lb.min[1] + R * 0.6), lb.max[1] - R * 0.6);
-    const cx = lb.min[0] - (ri + m.pared);
-    const aro = G(CrossSection.circle(R, seg).translate([cx, cy])), hueco = G(CrossSection.circle(ri, seg).translate([cx, cy]));
-    // el cierre fino (+0.15/−0.15) elimina puntos donde dos lóbulos solo se tocan en un vértice
-    const base = G(G(G(G(G(CrossSection.union([B, aro])).subtract(hueco)).offset(0.15, 'Round', 2, seg)).offset(-0.15, 'Round', 2, seg)).simplify(0.01));
-    L = G(L.simplify(0.01));
-    // sólido: respaldo + letras encima (las letras están dentro del contorno del respaldo; la unión las funde en una pieza)
-    const hundido = 0.6; // las letras arrancan dentro del respaldo: sin caras coplanares en la unión
-    const solido = G(Manifold.union(G(base.extrude(m.respaldo)), G(G(L.extrude(m.relieve + hundido)).translate([0, 0, m.respaldo - hundido]))));
+    return B;
+  };
+  try {
+    const s = escala * m.mayuscula / fuente.capHeight, ri = m.agujero / 2, R = ri + m.pared;
+    let base, relieve, ojal, L;
+    if (modelo === 'cuadros') {
+      // cuadros iguales en fila, solapados un ancho de marco para que el marco compartido sea uno solo
+      const marco = 1.6, holgura = 1.2, n = [...nombre].length;
+      const lado = escala * 21, paso = lado - marco, interior = lado - 2 * (marco + holgura);
+      const letras = [], cuadros = [], marcos = [];
+      [...nombre].forEach((ch, i) => {
+        const g = fuente.glyphs[ch]; if (!g) throw new Error('letra sin glifo: ' + ch);
+        // se ajusta al cuadro ANTES de engrosar, para no adelgazar trazos al reducir
+        const crudo = k => G(new CrossSection(g.c.map(c => { const p = []; for (let j = 0; j < c.length; j += 2) p.push([c[j] * k, c[j + 1] * k]); return p; }), 'NonZero'));
+        const b0 = crudo(s).bounds(), f = Math.min(1, (interior - 1.6) / Math.max(b0.max[0] - b0.min[0], b0.max[1] - b0.min[1]));
+        const Lc = reforzar(crudo(s * f)), b = Lc.bounds();
+        const cx = i * paso + lado / 2;
+        letras.push(G(Lc.translate([cx - (b.min[0] + b.max[0]) / 2, -(b.min[1] + b.max[1]) / 2])));
+        const q = G(G(CrossSection.square([lado, lado], true)).translate([cx, 0]));
+        const qr = G(G(G(q.offset(-2, 'Round', 2, seg)).offset(2, 'Round', 2, seg)));
+        // el marco queda 0.4 mm adentro del borde: sin paredes coplanares con la base
+        const qi = G(qr.offset(-0.4, 'Round', 2, seg));
+        cuadros.push(qr); marcos.push(G(qi.subtract(G(qi.offset(-marco, 'Round', 2, seg)))));
+        void n;
+      });
+      L = G(CrossSection.union(letras));
+      const cuerpo = G(CrossSection.union(cuadros));
+      ojal = { cx: -(ri + 2), cy: 0 };
+      const cuello = G(CrossSection.hull([circulo(R, [ojal.cx, 0]), circulo(lado * 0.3, [lado * 0.3, 0])]));
+      base = G(CrossSection.union([cuerpo, cuello]));
+      relieve = G(CrossSection.union([L, G(CrossSection.union(marcos))]));
+    } else {
+      const { polys, primera } = contornosNombre(fuente, nombre);
+      const esc = ps => ps.map(p => p.map(([x, y]) => [x * s, y * s]));
+      L = reforzar(G(new CrossSection(esc(polys), 'NonZero')));
+      const lb = L.bounds(), P = esc(primera).flat();
+      let izq = P[0]; for (const p of P) if (p[0] < izq[0]) izq = p;
+      if (modelo === 'hueso') {
+        // hueso: barra con margen alrededor del nombre y dos bolas en cada punta; el ojal va en la bola de arriba a la izquierda
+        const mg = 3, x0 = lb.min[0] - mg, x1 = lb.max[0] + mg, y0 = lb.min[1] - mg, y1 = lb.max[1] + mg, h = y1 - y0, yc = (y0 + y1) / 2;
+        const rb = Math.max(R + 1.2, h * 0.36), dy = h * 0.36, kx0 = x0 - rb * 0.3, kx1 = x1 + rb * 0.3;
+        const barra = G(G(CrossSection.square([x1 - x0, h * 0.8])).translate([x0, yc - h * 0.4]));
+        base = G(CrossSection.union([barra, circulo(rb, [kx0, yc + dy]), circulo(rb, [kx0, yc - dy]), circulo(rb, [kx1, yc + dy]), circulo(rb, [kx1, yc - dy])]));
+        base = G(G(base.offset(1, 'Round', 2, seg)).offset(-1, 'Round', 2, seg)); // redondea la unión barra–bolas
+        ojal = { cx: kx0 - rb * 0.15, cy: yc + dy + rb * 0.1 };
+        // el agujero no debe tocar las letras: si quedara a menos de 2 mm, se aleja hacia afuera
+        const dist = Math.hypot(ojal.cx - izq[0], ojal.cy - izq[1]);
+        if (ojal.cx + ri + 2 > lb.min[0]) ojal.cx = lb.min[0] - ri - 2;
+        void dist;
+        base = G(CrossSection.union([base, circulo(R, [ojal.cx, ojal.cy])]));
+      } else {
+        // 'fondo': contorno de 2 mm + cierre; 'letras': solo el cierre y un filo de 0.4 mm (sin paredes coplanares con las letras) y lo que une
+        // letras, puntos y tildes queda más bajo que las letras para que se lean
+        const contorno = modelo === 'fondo' ? m.contorno : 0.4, cierre = modelo === 'fondo' ? m.cierre : 2.4;
+        base = unir(G(G(G(G(L.simplify(0.05)).offset(contorno + cierre, 'Round', 2, seg)).simplify(0.02)).offset(-cierre, 'Round', 2, seg)), modelo === 'fondo' ? m.contorno * 0.9 : 1.1);
+        const cy = Math.min(Math.max(izq[1], lb.min[1] + R * 0.6), lb.max[1] - R * 0.6);
+        ojal = { cx: lb.min[0] - (ri + 2), cy };
+        // cuello macizo entre el aro y la primera letra (no solo un punto de contacto)
+        const cuello = G(CrossSection.hull([circulo(R, [ojal.cx, ojal.cy]), circulo(1.6, [izq[0] + 1.2, izq[1]])]));
+        base = G(CrossSection.union([base, cuello]));
+      }
+      relieve = L;
+    }
+    // con fondo, hueso y cuadros la base es maciza: solo su contorno exterior, sin huecos encerrados (C, entre I y T…)
+    if (modelo !== 'letras') base = G(new CrossSection(base.toPolygons().filter(p => areaFirmada(p) > 0), 'NonZero'));
+    // agujero del ojal y cierre fino (+0.15/−0.15) que elimina puntos donde dos lóbulos solo se tocan en un vértice
+    base = G(G(G(G(base.subtract(circulo(ri, [ojal.cx, ojal.cy]))).offset(0.15, 'Round', 2, seg)).offset(-0.15, 'Round', 2, seg)).simplify(0.01));
+    relieve = G(G(relieve.intersect(base)).simplify(0.01));
+    const hundido = 0.6; // el relieve arranca dentro de la base: sin caras coplanares en la unión
+    const solido = G(Manifold.union(G(base.extrude(m.respaldo)), G(G(relieve.extrude(m.relieve + hundido)).translate([0, 0, m.respaldo - hundido]))));
     const bb = solido.boundingBox(), dx = -(bb.min[0] + bb.max[0]) / 2, dy = -(bb.min[1] + bb.max[1]) / 2;
     let final = G(solido.translate([dx, dy, 0]));
-    // quita aristas diminutas que dejan las booleanas (triángulos casi degenerados en el STL)
-    if (final.simplify) final = G(final.simplify(0.02));
+    if (final.simplify) final = G(final.simplify(0.02)); // quita aristas diminutas que dejan las booleanas
     const cuerpos = final.decompose(); cuerpos.forEach(G);
     const mesh = final.getMesh();
     const np = mesh.numProp, pos = new Float32Array(mesh.vertProperties.length / np * 3);
@@ -107,16 +211,20 @@ export function construirLlavero(w, fuente, nombre, m = MEDIDAS) {
     geometria.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geometria.setIndex(new THREE.BufferAttribute(new Uint32Array(mesh.triVerts), 1));
     geometria.computeVertexNormals();
-    // resistencia (en 2D): las letras ya son su propia apertura de 0.6 mm (trazo ≥ 1.2 mm); erosionar 0.6 mm el
-    // respaldo no debe partirlo (puentes ≥ 1.2 mm); erosionar 1 mm debe dejar el aro del ojal cerrado (pared ≥ 2 mm)
+    // resistencia (2D): trazos de las letras ≥ 1.2 mm (ya son su propia apertura); la base erosionada 0.6 mm sigue
+    // en una pieza (puentes ≥ 1.2 mm); erosionada 1 mm deja el aro del ojal cerrado (pared ≥ 2 mm alrededor del agujero)
     const trazo = abrir(L).area() / L.area();
     const eB = G(base.offset(-0.6, 'Round', 2, seg)).decompose(); eB.forEach(G);
-    const anillo = G(G(base.offset(-1, 'Round', 2, seg)).intersect(G(CrossSection.circle(R + 0.5, seg).translate([cx, cy]))));
-    const resistencia = { trazos: trazo > 0.995, puentes: eB.length === 1, ojal: anillo.decompose().map(G).length === 1 && anillo.toPolygons().length === 2, agujero: m.agujero, pared: m.pared };
+    const anillo = G(G(base.offset(-1, 'Round', 2, seg)).intersect(circulo(R + 0.5, [ojal.cx, ojal.cy])));
+    const dLetras = G(L.intersect(circulo(ri + 2, [ojal.cx, ojal.cy]))).area();
+    // cuellos: erosionar 0.55 mm cada pieza del relieve no debe partirla (sin uniones de menos de ~1.2 mm)
+    const piezas = c => { const d = c.decompose(); d.forEach(G); return d.length; };
+    const cuellos = piezas(relieve) === piezas(G(relieve.offset(-0.55, 'Round', 2, seg)));
+    const resistencia = { cuellos, trazos: trazo > 0.995, puentes: eB.length === 1, ojal: anillo.decompose().map(G).length === 1 && anillo.toPolygons().length === 2 && dLetras === 0, agujero: m.agujero, pared: m.pared };
     const r1 = v => Math.round(v * 10) / 10;
     return {
-      geometria, respaldo: m.respaldo, engrosado, cuerpos: cuerpos.length, volumen: final.volume(), resistencia, estado: final.status(), genero: final.genus(), puentes,
-      medidas: { ancho: r1(bb.max[0] - bb.min[0]), alto: r1(bb.max[1] - bb.min[1]), grueso: r1(bb.max[2] - bb.min[2]) },
+      geometria, modelo, respaldo: m.respaldo, engrosado, perdida, cuerpos: cuerpos.length, volumen: final.volume(), resistencia, estado: final.status(), genero: final.genus(), puentes,
+      ojalAncho: 2 * R + 2, medidas: { ancho: r1(bb.max[0] - bb.min[0]), alto: r1(bb.max[1] - bb.min[1]), grueso: r1(bb.max[2] - bb.min[2]) },
     };
   } finally { for (const o of basura) try { o.delete(); } catch {} }
 }

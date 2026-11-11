@@ -1,19 +1,57 @@
 // Interfaz de «Tu nombre en 3D» (llavero): vista previa (solo cuando la sección está cerca de la vista) y descarga.
-// El motor geométrico (manifold-3d, wasm) y la fuente se cargan solo al acercarse a la sección.
+// El motor geométrico (manifold-3d, wasm) corre en un Worker y se carga solo al acercarse a la sección.
 import * as THREE from 'three';
-import { validarNombre, construirLlavero, cargarManifold, exportarSTL, archivoNombre } from './nombre3d.js';
-import wasmUrl from 'manifold-3d/manifold.wasm?url';
+import { validarNombre, exportarSTL, archivoNombre } from './nombre3d.js';
 
-// fuente del llavero: «Llavero Script», subconjunto renombrado de Pacifico (OFL 1.1), elegida por el usuario
-const cargarFuente = () => import('./fuentes-llavero/script.json').then(m => m.default);
-let motorP = null;
-const motor = () => motorP ??= Promise.all([cargarManifold({ locateFile: () => wasmUrl }), cargarFuente()]).then(([w, fuente]) => ({ w, fuente }));
+import { ESTILOS } from './estilos-llavero.js';
+
+// miniaturas de los modelos (SVG en línea, decorativas: el texto de la opción ya lo dice)
+const T = '#c4683f', A = '#ecd9b8', LET = `<text x="40" y="33" text-anchor="middle" font-family="Pacifico,cursive" font-size="19" fill="${A}" stroke="#7a3f25" stroke-width=".6">Ana</text>`;
+const svg = c => `<svg class="n3d-mini" viewBox="0 0 80 48" aria-hidden="true" focusable="false">${c}</svg>`;
+const MINIATURAS = {
+  letras: svg(`<circle cx="15" cy="27" r="5" fill="none" stroke="${A}" stroke-width="3.2"/><text x="44" y="34" text-anchor="middle" font-family="Pacifico,cursive" font-size="22" fill="${A}" stroke="#7a3f25" stroke-width=".7">Ana</text>`),
+  fondo: svg(`<rect x="7" y="10" width="68" height="30" rx="14" fill="${T}"/><circle cx="16" cy="25" r="3.2" fill="#fff8ee"/>` + LET.replace('x="40"', 'x="46"')),
+  hueso: svg(`<g fill="${T}"><rect x="14" y="15" width="52" height="18"/><circle cx="12" cy="16" r="8"/><circle cx="12" cy="32" r="8"/><circle cx="68" cy="16" r="8"/><circle cx="68" cy="32" r="8"/></g><circle cx="10" cy="14" r="2.6" fill="#fff8ee"/>` + LET),
+  cuadros: svg(`<g fill="${T}" stroke="${A}" stroke-width="1.6"><rect x="10" y="12" width="21" height="24" rx="3"/><rect x="30" y="12" width="21" height="24" rx="3"/><rect x="50" y="12" width="21" height="24" rx="3"/></g><circle cx="5" cy="24" r="4" fill="${T}"/><circle cx="5" cy="24" r="1.8" fill="#fff8ee"/><g font-family="Pacifico,cursive" font-size="15" fill="${A}" text-anchor="middle"><text x="20.5" y="30">A</text><text x="40.5" y="30">n</text><text x="60.5" y="30">a</text></g>`),
+};
+import '@fontsource/pacifico/latin-400.css'; import '@fontsource/lobster/latin-400.css'; import '@fontsource/lobster-two/latin-700.css';
+import '@fontsource/leckerli-one/latin-400.css'; import '@fontsource/kaushan-script/latin-400.css'; import '@fontsource/oleo-script/latin-700.css';
+import '@fontsource/sansita-swashed/latin-800.css'; import '@fontsource/courgette/latin-400.css'; import '@fontsource/grand-hotel/latin-400.css';
+import '@fontsource/merienda/latin-700.css';
+
+// la geometría se calcula en un Worker (manifold-3d en wasm + contornos de la fuente elegida, cargados al pedirlos)
+let worker = null, sig = 0;
+const pedidos = new Map();
+const generar = (estilo, nombre, modelo) => new Promise((res, rej) => {
+  if (!worker) {
+    worker = new Worker(new URL('./llavero-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = ({ data }) => { const p = pedidos.get(data.id); pedidos.delete(data.id); if (p) data.error ? p.rej(new Error(data.error)) : p.res(data); };
+  }
+  const id = ++sig; pedidos.set(id, { res, rej }); worker.postMessage({ id, estilo, nombre, modelo });
+});
+const aGeometria = ({ pos, idx }) => {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
+  return g;
+};
 
 const C = { arena: 0xE7D9C1, terracota: 0xB2442E, carbon: 0x1F1B18 };
 
 export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {} } = {}) {
   const form = root.querySelector('form'), input = form.querySelector('input'), msg = root.querySelector('.n3d-msg');
   const medidas = root.querySelector('.n3d-medidas'), cv = root.querySelector('canvas'), boton = form.querySelector('button[type=submit]');
+  // selector de estilo: cada opción muestra el nombre escrito en su fuente
+  const selector = root.querySelector('.n3d-estilos');
+  selector.innerHTML = ESTILOS.map((e, i) => `<label class="n3d-estilo"><input type="radio" name="estilo" value="${e.id}"${i ? '' : ' checked'}><span class="sr">Estilo ${i + 1} de ${ESTILOS.length}: </span><span class="n3d-muestra" style="font-family:'${e.familia}',cursive;font-weight:${e.peso}"></span></label>`).join('');
+  const estilo = () => selector.querySelector('input:checked').value;
+  // selector de modelo: miniatura dibujada (terracota = base, arena = letras/relieve) + nombre + nota
+  const selModelo = root.querySelector('.n3d-modelos');
+  selModelo.innerHTML = (textos.modelos || []).map((o, i) => `<label class="n3d-modelo"><input type="radio" name="modelo" value="${o.id}"${i ? '' : ' checked'}><span class="n3d-ficha">${MINIATURAS[o.id]}<span class="n3d-ficha-txt"><strong>${o.nombre}</strong><small>${o.nota}</small></span></span></label>`).join('');
+  const tipo = () => selModelo.querySelector('input:checked')?.value || 'letras';
+  selModelo.addEventListener('change', () => { listo = true; actualizar(); });
+  const muestras = [...selector.querySelectorAll('.n3d-muestra')];
+  const pintarMuestras = () => { const v = validarNombre(input.value); const txt = v.ok ? v.nombre : (textos.campo || 'Tu nombre'); muestras.forEach(s => { s.textContent = txt; }); };
+  selector.addEventListener('change', () => { listo = true; actualizar(); });
   let renderer = null, scene, cam, grupo, visible = false, modelo = null, raf = 0, t0 = performance.now();
 
   const iniciar = () => {
@@ -64,13 +102,27 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {}
     if (!v.ok) {
       // campo vacío: invitación en gris, no error
       msg.classList.remove('ok'); msg.classList.toggle('pista', vacio); msg.textContent = vacio ? textos.vacio : v.msg;
+      selModelo.querySelectorAll('.n3d-sugerido').forEach(l => l.classList.remove('n3d-sugerido'));
       modelo = null; medidas.textContent = ''; boton.disabled = true; limpiar(); return null;
     }
     msg.textContent = ''; msg.classList.remove('ok', 'pista');
     boton.disabled = true; root.classList.add('n3d-cargando');
-    const { w, fuente } = await motor();
-    if (yo !== turno) return null; // llegó otra tecla mientras tanto
-    const nuevo = construirLlavero(w, fuente, v.nombre);
+    let r;
+    try { r = await generar(estilo(), v.nombre, tipo()); } catch (e) {
+      if (yo !== turno) return null;
+      root.classList.remove('n3d-cargando'); msg.textContent = 'No pudimos armar tu llavero. Prueba con otro modelo o estilo.'; console.error(e); return null;
+    }
+    if (yo !== turno || r.descartado) return null; // llegó otra tecla mientras tanto
+    selModelo.querySelectorAll('.n3d-modelo').forEach(l => l.classList.remove('n3d-sugerido'));
+    if (!r.meta.cabe) {
+      // aviso suave (gris, como los demás) y descarga bloqueada; se resaltan los modelos donde sí cabe
+      if (modelo) modelo.geometria.dispose();
+      modelo = null; medidas.textContent = ''; limpiar(); root.classList.remove('n3d-cargando');
+      msg.classList.add('pista'); msg.textContent = textos.noCabe;
+      for (const id of r.meta.cabeEn) selModelo.querySelector(`input[value=${id}]`).closest('.n3d-modelo').classList.add('n3d-sugerido');
+      return null;
+    }
+    const nuevo = { ...r.meta, geometria: aGeometria(r) };
     if (modelo) modelo.geometria.dispose();
     modelo = nuevo; root.classList.remove('n3d-cargando'); boton.disabled = false;
     const { ancho, alto, grueso } = modelo.medidas;
@@ -79,7 +131,7 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {}
     return v;
   };
   let pend = 0, listo = false;
-  input.addEventListener('input', () => { clearTimeout(pend); pend = setTimeout(actualizar, 200); });
+  input.addEventListener('input', () => { pintarMuestras(); clearTimeout(pend); pend = setTimeout(actualizar, 350); });
   form.addEventListener('submit', async e => {
     e.preventDefault(); clearTimeout(pend);
     const v0 = validarNombre(input.value);
@@ -91,7 +143,7 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {}
     msg.textContent = 'Listo: tu archivo se descargó.'; msg.classList.remove('pista'); msg.classList.add('ok');
   });
   input.maxLength = 40; // tope amplio solo contra pegados enormes; el límite de 12 lo avisa validarNombre
-  input.value = inicial; boton.disabled = true;
+  input.value = inicial; boton.disabled = true; pintarMuestras();
   // el primer cálculo (y la descarga del motor) espera a que la sección esté cerca
   new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) { iniciar(); render(); arrancar(); if (!listo) { listo = true; actualizar(); } } }, { rootMargin: '600px 0px' }).observe(cv);
   input.addEventListener('focus', () => { if (!listo) { listo = true; actualizar(); } });
