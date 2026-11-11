@@ -47,7 +47,7 @@ export const content = {
       { id: 'cuadros', nombre: 'Cuadritos', nota: 'Cada letra en su cuadro, en relieve' },
     ],
     noCabe: 'Tu nombre es muy largo para este modelo. Prueba con otro modelo o con un nombre más corto.',
-    noCabeEstilo: 'Tu nombre es muy largo para este estilo de letra. Prueba con otro estilo o con un nombre más corto.',
+    noCabeEstilo: 'Tu nombre no cabe con este estilo de letra en ningún modelo. Prueba con otro estilo o con un nombre más corto.',
     estilo: 'Elige el estilo de letra',
     descargar: 'Descargar mi llavero (STL)',
     impreso: 'Lo quiero impreso',
