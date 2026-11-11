@@ -110,17 +110,46 @@ footer .obra{display:block;margin-top:.6rem;font-family:var(--mono);font-size:.7
 section#personalizado{padding-bottom:0}
 .n3d-bloque{width:100vw;margin-left:calc(50% - 50vw);background:var(--crema);padding:clamp(4rem,10vw,7rem) clamp(1.2rem,5vw,2.5rem);scroll-margin-top:4rem}
 .n3d-bloque .wrap{position:relative;z-index:2}
-.n3d{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,4vw,3rem);align-items:center}
-.n3d-form{margin-top:1.5rem}
+.n3d{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,4vw,3rem);align-items:center;grid-template-areas:"intro vista" "controles vista"}
+.n3d-intro{grid-area:intro}
+.n3d-controles{grid-area:controles}
+.n3d-form{margin-top:0}
 .n3d-form input{font-size:1.25rem;font-weight:600}
 .n3d-form input[aria-invalid=true]{border-color:var(--terracota)}
 .n3d-ayuda{font-size:.85rem;opacity:.75;margin-top:-.6rem}
 .n3d-msg{font-family:var(--mono);font-size:.9rem;color:var(--terracota);min-height:1.4em}
+.n3d-campo-estilos{border:0;padding:0;margin:0 0 1.2rem;min-width:0}
+.n3d-campo-estilos legend{font-weight:600;font-size:.95rem;margin-bottom:.5rem;padding:0}
+.n3d-estilos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.n3d-estilo{position:relative;display:block;margin:0;cursor:pointer}
+.n3d-estilo input{position:absolute;opacity:0;width:1px;height:1px}
+.n3d-muestra{display:block;padding:.45rem .7rem;border:2px solid #d9cbb8;border-radius:10px;background:var(--blanco);font-size:clamp(.95rem,3.6vw,1.3rem);line-height:1.25;white-space:normal;overflow-wrap:anywhere;word-break:break-word;text-align:center;color:var(--carbon);transition:border-color .15s,background .15s}
+.n3d-estilo:hover .n3d-muestra{border-color:#b9a78f}
+.n3d-estilo input:checked+.sr+.n3d-muestra{border-color:var(--terracota);background:#fbefe6;color:var(--terracota)}
+.n3d-estilo input:focus-visible+.sr+.n3d-muestra{outline:3px solid var(--jade);outline-offset:2px}
+.n3d-modelos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.n3d-modelo{position:relative;display:block;margin:0;cursor:pointer}
+.n3d-modelo input{position:absolute;opacity:0;width:1px;height:1px}
+.n3d-ficha{display:flex;align-items:center;gap:.55rem;height:100%;padding:.45rem .6rem;border:2px solid #d9cbb8;border-radius:10px;background:var(--blanco);transition:border-color .15s,background .15s}
+.n3d-mini{flex:0 0 auto;width:64px;height:auto}
+.n3d-ficha-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.n3d-ficha-txt strong{font-size:.95rem;color:var(--carbon)}
+.n3d-ficha-txt small{font-size:.78rem;color:#6b5d50}
+.n3d-modelo:hover .n3d-ficha{border-color:#b9a78f}
+.n3d-modelo input:checked+.n3d-ficha{border-color:var(--terracota);background:#fbefe6}
+.n3d-modelo input:checked+.n3d-ficha strong{color:var(--terracota)}
+.n3d-modelo.n3d-sugerido .n3d-ficha{border-color:var(--jade);border-style:dashed;background:#eef5f0}
+.n3d-modelo input:focus-visible+.n3d-ficha{outline:3px solid var(--jade);outline-offset:2px}
+@media (max-width:420px){.n3d-mini{width:48px}.n3d-ficha{padding:.4rem .45rem;gap:.4rem}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .n3d-btns{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center}
 .n3d-medidas{margin:0;font-size:.85rem}
 .n3d-legal{font-size:.8rem;opacity:.7}
-.n3d-vista{width:100%;aspect-ratio:4/3;border-radius:14px;background:radial-gradient(circle at 50% 40%,var(--blanco),var(--arena));display:block}
-@media (max-width:820px){.n3d{grid-template-columns:1fr}.n3d-vista{order:-1;aspect-ratio:16/10}}
+.n3d-vista{grid-area:vista;width:100%;aspect-ratio:4/3;border-radius:14px;background:radial-gradient(circle at 50% 40%,var(--blanco),var(--arena));display:block}
+@media (max-width:820px){
+  .n3d{grid-template-columns:1fr;grid-template-areas:"intro" "vista" "controles";align-items:stretch}
+  .n3d-vista{aspect-ratio:16/10}
+}
 .n3d-msg.ok{color:var(--jade)}
 .n3d-msg.pista{color:#6b625b}
 .btn:disabled,.btn:disabled:hover{background:#d9cbb8;color:#5a4f47;cursor:not-allowed}
