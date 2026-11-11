@@ -14,7 +14,7 @@ parentPort.on('message', msg => {
   const { fid, nombre, modelo, verbose, lento } = msg;
   try {
     const t0 = Date.now();
-    const mod = m.construirLlavero(w, fuentes[fid], nombre, modelo);
+    const mod = m.construirLlavero(w, fuentes[fid], nombre, modelo, m.MEDIDAS, { legibilidad: true });
     const ms = Date.now() - t0;
     if (lento && ms > +lento) console.log('LENTO', modelo, fid, nombre, ms, 'ms');
     if (!mod.cabe) {
@@ -29,6 +29,7 @@ parentPort.on('message', msg => {
       volumen: mod.volumen, engrosado: mod.engrosado, perdida: mod.perdida, stl: stl.buffer, ms,
       contadores: mod.contadores, generoEsperado: mod.generoEsperado, altoLetraMin: mod.altoLetraMin,
       componentes: mod.componentes, componentesGlifo: mod.componentesGlifo, separacionAcentos: mod.separacionAcentos,
+      legibilidad: mod.legibilidad,
     }, [stl.buffer]);
   } catch (e) {
     parentPort.postMessage({ t: 'res', error: String(e && e.stack || e) });

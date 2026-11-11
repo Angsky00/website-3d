@@ -79,7 +79,7 @@ async function pedir(fid, nombre, modelo, verbose) {
 
 // STL binario → cerrado (cada arista no dirigida exactamente en 2 caras, sentidos opuestos), UNA sola pieza conectada
 // por aristas (no basta tocarse en un vértice), apoyada en z = 0, con el agujero del ojal (género ≥ 1) y medidas en mm
-const maxEngr = {}, noCaben = [];
+const maxEngr = {}, noCaben = [], leg = { contrapunzones: 0, pares: 0, minApertura: Infinity, minHueco: Infinity };
 async function revisar(fid, nombre, verbose, modelo = 'letras') {
   const res = await pedir(fid, nombre, modelo, verbose);
   if (!res) return null;
@@ -124,6 +124,14 @@ async function revisar(fid, nombre, verbose, modelo = 'letras') {
     if (res.componentesGlifo > 1) ok(res.separacionAcentos == null || res.separacionAcentos > 0.15, t + `la tilde o el punto no se funde con el cuerpo (hueco ${res.separacionAcentos} mm)`);
   }
   ok(res.volumen > 0, t + 'volumen positivo');
+  // legibilidad: cada contrapunzón del glifo original (e, a, o, g, d, p…) sigue abierto en el relieve con ≥ APERTURA_MIN mm de
+  // ancho inscrito, y dos letras seguidas que no se tocan en la fuente quedan separadas por ≥ SEPARACION_MIN mm
+  const Lg = res.legibilidad, letra = i => [...nombre][i];
+  for (const c of Lg.contrapunzones) ok(c.apertura >= m.APERTURA_MIN, t + `contrapunzón de «${letra(c.letra)}» abierto ≥ ${m.APERTURA_MIN} mm (${c.apertura} mm; en la fuente ${c.fuente} mm)`);
+  for (const p of Lg.pares) ok(p.hueco >= m.SEPARACION_MIN, t + `«${letra(p.letra)}${letra(p.letra + 1)}» separadas ≥ ${m.SEPARACION_MIN} mm (${p.hueco} mm)`);
+  leg.contrapunzones += Lg.contrapunzones.length; leg.pares += Lg.pares.length;
+  if (Lg.minApertura != null) leg.minApertura = Math.min(leg.minApertura, Lg.minApertura);
+  if (Lg.minHueco != null) leg.minHueco = Math.min(leg.minHueco, Lg.minHueco);
   ok(res.engrosado <= 0.6 && res.perdida < 0.02, `${t}la fuente aguanta 1.2 mm sin recortes (engrosado ${res.engrosado}, recorte ${(res.perdida * 100).toFixed(1)} %)`);
   maxEngr[fid] = Math.max(maxEngr[fid] || 0, res.engrosado);
   const r = res.resistencia; ok(r.trazos, t + 'trazos ≥ 1.2 mm'); ok(r.puentes, t + 'puentes ≥ 1.2 mm'); ok(r.ojal && r.agujero >= 4 && r.pared >= 2, t + 'ojal ≥ 4 mm con pared ≥ 2 mm');
@@ -137,7 +145,8 @@ const NOMBRES = ['Angel', 'Ángel', 'Nicole', 'Sofía', 'Andrea', 'Ginevra', 'To
   'i', 'j', 'l', 't', 'I', 'J', 'L', 'T', 'Ñ', 'ñ', 'ü', 'í', 'É', 'o', 'W', 'lt', 'tl', 'ij', 'ii', 'iiiiiiiiiiii', 'llllllllllll', 'tttttttttttt',
   'Maximilianoo', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'LLLLLLLLLLLL', 'ÑÑÑÑÑÑÑÑÑÑÑÑ', 'ÁÉÍÓÚÜÑáéíóú', 'Guadalupeñaz', 'NICOLE', 'ITZEL', 'ÓSCAR', 'BEGOÑA', 'MÜLLER'];
 // los 4 modelos: todos los nombres con la fuente por defecto (Pacifico) y los casos difíciles con las 10 fuentes
-const DIFICILES = ['Angel', 'NICOLE', 'ITZEL', 'Calkiní', 'ÓSCAR', 'BEGOÑA', 'MÜLLER', 'Íñigo', 'Iñigo', 'Lluvia', 'Itzel', 'Jazmín', 'ÑANDÚ', 'i', 'j', 'l', 'I', 'J', 'Í', 'Ñ', 'iiiiiiiiiiii', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'LLLLLLLLLLLL', 'Guadalupeñaz'];
+// legibilidad (fix/legibilidad-fuentes): los nombres de la hoja y otros con muchas panzas (b d e g o p q)
+const DIFICILES = ['Angel', 'Maximiliano', 'Begoña', 'Gabriela', 'Diego', 'Pepe', 'Bob', 'Quique', 'NICOLE', 'ITZEL', 'Calkiní', 'ÓSCAR', 'BEGOÑA', 'MÜLLER', 'Íñigo', 'Iñigo', 'Lluvia', 'Itzel', 'Jazmín', 'ÑANDÚ', 'i', 'j', 'l', 'I', 'J', 'Í', 'Ñ', 'iiiiiiiiiiii', 'WWWWWWWWWWWW', 'MMMMMMMMMMMM', 'LLLLLLLLLLLL', 'Guadalupeñaz'];
 let revisados = 0;
 for (const modelo of m.MODELOS) for (const fid of FUENTES) for (const s of (fid === 'script' ? NOMBRES : DIFICILES)) {
   ok(m.validarNombre(s).ok, 'nombre de prueba válido ' + s); await revisar(fid, s, fid === 'script' && ['Angel', 'Íñigo', 'i', 'WWWWWWWWWWWW', 'ÑANDÚ'].includes(s), modelo); revisados++;
@@ -148,6 +157,7 @@ for (const mo of m.MODELOS) for (const fid of FUENTES) {
 }
 console.log(`no caben a 10 mm (aviso y descarga bloqueada): ${noCaben.length}`, noCaben.filter(x => x.includes('/script/')).join(' '));
 console.log('engrosado máximo por fuente (mm)', JSON.stringify(maxEngr));
+console.log(`legibilidad: ${leg.contrapunzones} contrapunzones (el más chico ${leg.minApertura} mm, mínimo ${m.APERTURA_MIN}) · ${leg.pares} pares de letras no unidas (hueco más chico ${leg.minHueco} mm, mínimo ${m.SEPARACION_MIN})`);
 console.log(`revisados ${revisados} llaveros: ${m.MODELOS.length} modelos × (${NOMBRES.length} nombres con Pacifico + ${DIFICILES.length} difíciles × ${FUENTES.length - 1} fuentes)`);
 
 // avisos específicos y nombres de archivo
