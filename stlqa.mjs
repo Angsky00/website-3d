@@ -157,9 +157,11 @@ ok(m.validarNombre('JoséMaríaLuz'.normalize('NFD')).ok, '12 letras con acentos
 for (const s of ['François', 'Weiß', 'Àlex', 'Øyvind']) ok(msg(s) === 'Esa letra no está disponible. Usa letras del español.', 'letra no disponible: ' + s);
 for (const s of ['Ana!', 'José❤', '@ana']) ok(msg(s).startsWith('Sin símbolos'), 'símbolo: ' + s);
 ok(m.archivoNombre('Angel', 'hueso', 'script') === 'Angel-llavero-huesito-pacifico.stl', 'archivo Marketing: Angel + huesito + pacifico');
-ok(m.archivoNombre('José', 'fondo', 'moderna') === 'Jose-llavero-con-fondo-lobster-two.stl', 'archivo sin acentos, con-fondo y lobster-two');
-ok(m.archivoNombre('Íñigo', 'cuadros', 'tarde') === 'Inigo-llavero-cuadritos-merienda.stl', 'archivo cuadritos + merienda');
-ok(m.archivoNombre('Begon\u0303a', 'letras', 'script') === 'Begona-llavero-letras-pacifico.stl', 'archivo en NFC sin acentos');
+ok(m.archivoNombre('Begoña', 'hueso', 'script') === 'Begoña-llavero-huesito-pacifico.stl', 'archivo Marketing: Begoña conserva acento y ñ');
+ok(m.archivoNombre('Begoña', 'hueso', 'script') !== m.archivoNombre('Begona', 'hueso', 'script'), 'Begoña y Begona no chocan (regresión PR #3)');
+ok(m.archivoNombre('Begon\u0303a', 'letras', 'script') === 'Begoña-llavero-letras-pacifico.stl', 'entrada NFD sale en NFC');
+ok(m.archivoNombre('José', 'fondo', 'moderna') === 'José-llavero-con-fondo-lobster-two.stl', 'archivo conserva el acento, con-fondo y lobster-two');
+ok(m.archivoNombre('Íñigo', 'cuadros', 'tarde') === 'Íñigo-llavero-cuadritos-merienda.stl', 'archivo cuadritos + merienda, con acentos y ñ');
 ok(m.archivoNombre('I', 'letras', 'script') !== m.archivoNombre('i', 'letras', 'script'), 'I e i no chocan');
 if (worker) { const w = worker; worker = null; await w.terminate(); }
 await vite.close();

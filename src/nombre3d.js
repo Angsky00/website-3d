@@ -322,8 +322,8 @@ export function exportarSTL(modelo) {
   return new STLExporter().parse(new THREE.Mesh(modelo.geometria), { binary: true });
 }
 
-// Marketing: Angel-llavero-huesito-pacifico.stl (capitalización del nombre, sin acentos; modelo y estilo en minúsculas)
+// Marketing: Begoña-llavero-huesito-pacifico.stl (el nombre tal como lo escribió el usuario, en NFC, con acentos y ñ; modelo y estilo en minúsculas sin acentos)
 export function archivoNombre(n, modelo = 'letras', estilo = 'script') {
-  const nombre = n.normalize('NFC').normalize('NFD').replace(/\p{M}/gu, '');
+  const nombre = n.normalize('NFC');
   return `${nombre}-llavero-${MODELO_ARCHIVO[modelo] || modelo}-${ESTILO_ARCHIVO[estilo] || estilo}.stl`;
 }
