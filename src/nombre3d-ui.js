@@ -122,7 +122,8 @@ export function crearNombre3D(root, { reduced, inicial = 'Calkiní', textos = {}
       // aviso suave (gris, como los demás) y descarga bloqueada; se resaltan los modelos donde sí cabe
       if (modelo) modelo.geometria.dispose();
       modelo = null; medidas.textContent = ''; limpiar(); root.classList.remove('n3d-cargando');
-      msg.classList.add('pista'); msg.textContent = textos.noCabe;
+      // si con este estilo no cabe en ningún modelo (p. ej. una fuente de panzas chicas que pide letras más altas), se sugiere otro estilo
+      msg.classList.add('pista'); msg.textContent = r.meta.cabeEn.length || !textos.noCabeEstilo ? textos.noCabe : textos.noCabeEstilo;
       for (const id of r.meta.cabeEn) selModelo.querySelector(`input[value=${id}]`).closest('.n3d-modelo').classList.add('n3d-sugerido');
       return null;
     }
